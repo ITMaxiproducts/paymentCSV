@@ -38,6 +38,12 @@ class ShopifyAdminClient
         }
 
         if (!empty($decoded['errors'])) {
+            if ($this->isOrdersPermissionError($decoded['errors'])) {
+                throw new ShopifyPermissionException(
+                    'Shopify no permite consultar todo el periodo. Comprueba que la aplicación tenga los permisos read_orders y read_all_orders.',
+                );
+            }
+
             throw new RuntimeException('Shopify ha devuelto un error de GraphQL.');
         }
 
@@ -48,6 +54,33 @@ class ShopifyAdminClient
         }
 
         return $data;
+    }
+
+    private function isOrdersPermissionError(mixed $errors): bool
+    {
+        if (!is_array($errors)) {
+            return false;
+        }
+
+        foreach ($errors as $error) {
+            if (!is_array($error)) {
+                continue;
+            }
+
+            $code = strtoupper((string) ($error['extensions']['code'] ?? ''));
+            $message = strtolower((string) ($error['message'] ?? ''));
+
+            if (
+                $code === 'ACCESS_DENIED'
+                || str_contains($message, 'read_all_orders')
+                || str_contains($message, 'access denied')
+                || str_contains($message, 'access scope')
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -89,11 +122,11 @@ class ShopifyAdminClient
         $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
 
         if ($response === false) {
-            curl_close($handle);
+            unset($handle);
             throw new RuntimeException('No se ha podido conectar con Shopify.');
         }
 
-        curl_close($handle);
+        unset($handle);
 
         if ($status < 200 || $status >= 300) {
             throw new RuntimeException('Shopify ha rechazado la petición.');

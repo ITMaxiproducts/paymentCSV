@@ -34,7 +34,7 @@ Ambas aplicaciones, OHYEAH y HORECA, deben disponer de los mismos permisos.
 
 ### Operación GraphQL
 
-La operación `PaymentReportOrders` solicita pedidos ordenados por fecha de creación y pagina mediante `pageInfo.hasNextPage` y `pageInfo.endCursor`.
+La operación `PaymentReportOrders` solicita pedidos ordenados por última actualización y pagina mediante `pageInfo.hasNextPage` y `pageInfo.endCursor`.
 
 Campos relevantes:
 
@@ -45,15 +45,15 @@ Campos relevantes:
 
 ### Búsqueda y filtrado
 
-La búsqueda de candidatos usa una combinación de:
+La búsqueda de candidatos usa un superset seguro que incluye cualquier estado de pedido:
 
 ```text
-created_at:<=final_del_intervalo updated_at:>=inicio_del_intervalo
+created_at:<=final_del_intervalo updated_at:>=inicio_del_intervalo status:any
 ```
 
 Después, PHP aplica el intervalo exacto a `OrderTransaction.processedAt` en la zona `Europe/Madrid`.
 
-En la Fase 1 una transacción es válida cuando:
+Una transacción de pago es válida cuando:
 
 - `test` es `false`.
 - `kind` es `SALE` o `CAPTURE`.
@@ -62,11 +62,11 @@ En la Fase 1 una transacción es válida cuando:
 - El método se normaliza como `card` o `paypal`.
 - `amountSet.shopMoney.currencyCode` es `EUR`.
 
-La Fase 1 selecciona la primera transacción válida. La agregación de capturas y la resta de reembolsos pertenecen a la Fase 2 y no deben darse por implementadas todavía.
+PHP excluye pedidos cancelados y aquellos cuyo `sourceName` no es `web`. Agrega todas las ventas y capturas válidas por céntimos, conserva la fecha de la primera, combina valores distintos en orden cronológico y resta cada transacción `REFUND` satisfactoria cuyo `parentTransaction.id` apunta a uno de esos cobros. Los reembolsos se aplican aunque su `processedAt` sea posterior al intervalo, y el neto nunca baja de `0.00 EUR`.
 
 ### Errores
 
-`ShopifyAdminClient` transforma fallos HTTP, JSON o GraphQL en excepciones internas. `export.php` devuelve al navegador un mensaje seguro y no incluye el payload completo, el token ni una traza.
+`ShopifyAdminClient` transforma fallos HTTP, JSON o GraphQL en excepciones internas. Los errores de acceso a pedidos indican de forma segura que deben comprobarse `read_orders` y `read_all_orders`; no incluyen el mensaje remoto, el payload, el token ni una traza. `export.php` conserva esa indicación y generaliza el resto de fallos.
 
 ## 🏆 Beneficios
 

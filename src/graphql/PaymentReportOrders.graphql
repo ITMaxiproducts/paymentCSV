@@ -1,5 +1,5 @@
 query PaymentReportOrders($first: Int!, $after: String, $query: String!) {
-  orders(first: $first, after: $after, query: $query, sortKey: CREATED_AT) {
+  orders(first: $first, after: $after, query: $query, sortKey: UPDATED_AT) {
     nodes {
       id
       name

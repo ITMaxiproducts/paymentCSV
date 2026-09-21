@@ -6,8 +6,10 @@ use PaymentCsv\CsvEncoder;
 use PaymentCsv\DateRange;
 use PaymentCsv\ExportController;
 use PaymentCsv\PaymentMethodNormalizer;
+use PaymentCsv\PaymentReportOrders;
 use PaymentCsv\PaymentReportService;
 use PaymentCsv\ShopifyAdminClient;
+use PaymentCsv\ShopifyPermissionException;
 use PaymentCsv\StoreConfig;
 use PaymentCsv\StoreRegistry;
 
@@ -170,9 +172,81 @@ $runner->test('paginates Shopify orders and emits qualifying rows', static funct
     assertSameValue(2, count($calls));
     assertSameValue(null, $calls[0]['after']);
     assertSameValue('page-2', $calls[1]['after']);
+    assertContainsText('created_at:<=2026-01-31T22:59:59Z', $calls[0]['query']);
+    assertContainsText('updated_at:>=2025-12-31T23:00:00Z', $calls[0]['query']);
+    assertContainsText('status:any', $calls[0]['query']);
+    assertContainsText('sortKey: UPDATED_AT', PaymentReportOrders::query());
     assertSameValue(2, count($rows));
     assertSameValue('card', $rows[0]->paymentMethod);
     assertSameValue('paypal', $rows[1]->paymentMethod);
+});
+
+$runner->test('aggregates captures and subtracts later successful refunds', static function (): void {
+    $client = new ShopifyAdminClient(static fn (): array => fixture('orders-accounting'));
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
+    $range = DateRange::fromInput('2026-01-01', '2026-01-31');
+    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+
+    assertSameValue(['#2001', '#2002', '#2003'], array_map(
+        static fn ($row): string => $row->orderName,
+        $rows,
+    ));
+    assertSameValue('75.00', $rows[0]->amount);
+    assertSameValue('card', $rows[0]->paymentMethod);
+    assertSameValue('Shopify Payments', $rows[0]->gateway);
+    assertSameValue('CAPTURE', $rows[0]->kind);
+    assertSameValue('SUCCESS', $rows[0]->transactionStatus);
+    assertSameValue('PARTIALLY_REFUNDED', $rows[0]->paymentStatus);
+    assertSameValue('2025-09-01T23:30:00+02:00', $rows[0]->orderDate);
+    assertSameValue('2026-01-10T10:00:00+01:00', $rows[0]->transactionDate);
+});
+
+$runner->test('retains full refunds at zero and combines distinct transaction values', static function (): void {
+    $client = new ShopifyAdminClient(static fn (): array => fixture('orders-accounting'));
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
+    $range = DateRange::fromInput('2026-01-01', '2026-01-31');
+    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+
+    assertSameValue('0.00', $rows[1]->amount);
+    assertSameValue('REFUNDED', $rows[1]->paymentStatus);
+    assertSameValue('15.00', $rows[2]->amount);
+    assertSameValue('card', $rows[2]->paymentMethod);
+    assertSameValue('Stripe + Shopify Payments', $rows[2]->gateway);
+    assertSameValue('SALE + CAPTURE', $rows[2]->kind);
+});
+
+$runner->test('excludes cancelled, POS, test, failed, pending and unsupported payments', static function (): void {
+    $client = new ShopifyAdminClient(static fn (): array => fixture('orders-accounting'));
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
+    $range = DateRange::fromInput('2026-01-01', '2026-01-31');
+    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+    $names = array_map(static fn ($row): string => $row->orderName, $rows);
+
+    assertSameValue(false, in_array('#3001', $names, true));
+    assertSameValue(false, in_array('#3002', $names, true));
+    assertSameValue(false, in_array('#3003', $names, true));
+    assertSameValue(false, in_array('#3004', $names, true));
+});
+
+$runner->test('reports historical order permission failures safely', static function (): void {
+    $client = new ShopifyAdminClient(static fn (): array => [
+        'errors' => [[
+            'message' => 'Access denied for orders field with sensitive-token.',
+            'extensions' => ['code' => 'ACCESS_DENIED'],
+        ]],
+    ]);
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
+
+    try {
+        $client->query($store, PaymentReportOrders::query(), []);
+    } catch (ShopifyPermissionException $exception) {
+        assertContainsText('read_orders y read_all_orders', $exception->getMessage());
+        assertSameValue(false, str_contains($exception->getMessage(), 'sensitive-token'));
+
+        return;
+    }
+
+    throw new RuntimeException('Expected a ShopifyPermissionException to be thrown.');
 });
 
 $runner->test('writes the exact CSV schema and international amounts', static function (): void {

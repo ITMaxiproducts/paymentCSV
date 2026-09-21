@@ -59,7 +59,7 @@ final class DateRange
         $start = $this->start->setTimezone($utc)->format('Y-m-d\TH:i:s\Z');
         $end = $this->end->setTimezone($utc)->format('Y-m-d\TH:i:s\Z');
 
-        return sprintf('created_at:<=%s updated_at:>=%s', $end, $start);
+        return sprintf('created_at:<=%s updated_at:>=%s status:any', $end, $start);
     }
 
     public function formatInTimezone(string $timestamp): string

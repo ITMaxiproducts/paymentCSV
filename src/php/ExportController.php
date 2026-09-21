@@ -35,10 +35,6 @@ final class ExportController
         $service = new PaymentReportService($client);
         $rows = iterator_to_array($service->generate($store, $range), false);
 
-        usort($rows, static function (PaymentReportRow $left, PaymentReportRow $right): int {
-            return [$left->orderDate, $left->orderName] <=> [$right->orderDate, $right->orderName];
-        });
-
         return new ExportResult(
             $rows,
             sprintf('pagos-shopify-%s-%s-%s.csv', $store->key, $range->fromInputValue(), $range->toInputValue()),

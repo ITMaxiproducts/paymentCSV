@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use PaymentCsv\CsvResponse;
 use PaymentCsv\ExportController;
+use PaymentCsv\ShopifyPermissionException;
 
 require_once __DIR__ . '/src/bootstrap.php';
 
@@ -16,6 +17,8 @@ try {
     CsvResponse::stream($result->rows, $result->filename);
 } catch (InvalidArgumentException $exception) {
     respondWithError(422, $exception->getMessage());
+} catch (ShopifyPermissionException $exception) {
+    respondWithError(502, $exception->getMessage());
 } catch (Throwable) {
     respondWithError(502, 'No se ha podido generar el CSV desde Shopify.');
 }

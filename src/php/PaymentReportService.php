@@ -22,6 +22,7 @@ final class PaymentReportService
     public function generate(StoreConfig $store, DateRange $range): iterable
     {
         $cursor = null;
+        $rows = [];
 
         do {
             $data = $this->client->query($store, PaymentReportOrders::query(), [
@@ -49,7 +50,7 @@ final class PaymentReportService
                 $row = $this->rowFactory->fromOrder($order, $range);
 
                 if ($row !== null) {
-                    yield $row;
+                    $rows[] = $row;
                 }
             }
 
@@ -63,5 +64,13 @@ final class PaymentReportService
 
             $cursor = $hasNextPage ? $nextCursor : null;
         } while ($cursor !== null);
+
+        usort($rows, static function (PaymentReportRow $left, PaymentReportRow $right): int {
+            return [$left->orderDate, $left->orderName] <=> [$right->orderDate, $right->orderName];
+        });
+
+        foreach ($rows as $row) {
+            yield $row;
+        }
     }
 }

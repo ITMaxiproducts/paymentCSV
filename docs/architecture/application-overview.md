@@ -60,25 +60,22 @@ El separador es una coma, los decimales usan punto, las fechas se convierten a `
 
 ### Alcance implementado
 
-La Fase 1 permite:
+Las Fases 1 y 2 permiten:
 
 - Elegir OHYEAH o HORECA.
 - Seleccionar un intervalo inclusivo de hasta 92 días.
 - Consultar pedidos con paginación por cursor.
 - Filtrar transacciones `SALE` o `CAPTURE`, con estado `SUCCESS` y no marcadas como prueba.
 - Normalizar tarjeta, wallets basados en tarjeta y PayPal.
-- Elegir la primera transacción válida de cada pedido.
-- Descargar una fila por pedido encontrado.
+- Agregar todas las ventas y capturas válidas en una sola fila por pedido.
+- Restar los reembolsos correctos vinculados, incluso si son posteriores al intervalo.
+- Mantener los pedidos totalmente reembolsados con importe neto `0.00 EUR`.
+- Excluir pedidos cancelados y pedidos cuyo canal no sea Online Store.
+- Combinar de forma determinista métodos, pasarelas y tipos distintos.
+- Convertir las fechas a `Europe/Madrid` y ordenar el resultado de forma estable.
+- Mostrar un error seguro y accionable cuando faltan permisos para pedidos históricos.
 
 ### Alcance pendiente
-
-La Fase 2 todavía debe completar:
-
-- Agregación de varias transacciones válidas del mismo pedido.
-- Cálculo neto con reembolsos parciales o totales.
-- Exclusión definitiva de pedidos cancelados y canales distintos de Online Store.
-- Combinación determinista de varios tipos o gateways.
-- Tratamiento específico de permisos históricos.
 
 La Fase 3 debe añadir reintentos por throttling, validación HTTP reforzada, protección contra inyección de fórmulas CSV, diagnósticos seguros y documentación de despliegue.
 

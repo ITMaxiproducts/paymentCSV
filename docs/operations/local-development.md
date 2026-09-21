@@ -67,7 +67,7 @@ El verificador:
 
 ### Pruebas
 
-La suite cubre intervalos de fechas, límite de 92 días, tiendas permitidas, normalización de métodos, paginación, contrato CSV, interfaz y creación del resultado de exportación. Las respuestas de Shopify proceden de fixtures y no requieren red ni credenciales reales.
+La suite cubre intervalos de fechas, límite de 92 días, tiendas permitidas, normalización de métodos, paginación, históricos, agregación de cobros, reembolsos parciales y totales, filtros de canal y estado, permisos históricos, orden estable, contrato CSV, interfaz y creación del resultado de exportación. Las respuestas de Shopify proceden de fixtures y no requieren red ni credenciales reales.
 
 ### Diagnóstico básico
 

@@ -1,0 +1,262 @@
+{
+  "data": {
+    "orders": {
+      "nodes": [
+        {
+          "id": "gid://shopify/Order/2003",
+          "name": "#2003",
+          "createdAt": "2026-01-05T08:00:00Z",
+          "cancelledAt": null,
+          "displayFinancialStatus": "PAID",
+          "sourceName": "web",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/703",
+              "processedAt": "2026-01-05T08:10:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "CAPTURE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "5.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "visa" },
+              "parentTransaction": { "id": "gid://shopify/OrderTransaction/700" }
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/702",
+              "processedAt": "2026-01-05T08:05:00Z",
+              "gateway": "stripe",
+              "formattedGateway": "Stripe",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "10.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "mastercard" },
+              "parentTransaction": null
+            }
+          ]
+        },
+        {
+          "id": "gid://shopify/Order/3001",
+          "name": "#3001",
+          "createdAt": "2026-01-03T08:00:00Z",
+          "cancelledAt": "2026-01-04T08:00:00Z",
+          "displayFinancialStatus": "VOIDED",
+          "sourceName": "web",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/801",
+              "processedAt": "2026-01-03T08:05:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "10.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "visa" },
+              "parentTransaction": null
+            }
+          ]
+        },
+        {
+          "id": "gid://shopify/Order/2002",
+          "name": "#2002",
+          "createdAt": "2026-01-04T08:00:00Z",
+          "cancelledAt": null,
+          "displayFinancialStatus": "REFUNDED",
+          "sourceName": "web",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/601",
+              "processedAt": "2026-01-04T08:05:00Z",
+              "gateway": "paypal_express",
+              "formattedGateway": "PayPal Express Checkout",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "20.00", "currencyCode": "EUR" } },
+              "paymentDetails": null,
+              "parentTransaction": null
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/602",
+              "processedAt": "2026-03-01T10:00:00Z",
+              "gateway": "paypal_express",
+              "formattedGateway": "PayPal Express Checkout",
+              "kind": "REFUND",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "25.00", "currencyCode": "EUR" } },
+              "paymentDetails": null,
+              "parentTransaction": { "id": "gid://shopify/OrderTransaction/601" }
+            }
+          ]
+        },
+        {
+          "id": "gid://shopify/Order/2001",
+          "name": "#2001",
+          "createdAt": "2025-09-01T21:30:00Z",
+          "cancelledAt": null,
+          "displayFinancialStatus": "PARTIALLY_REFUNDED",
+          "sourceName": "web",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/501",
+              "processedAt": "2026-01-09T09:00:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "AUTHORIZATION",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "100.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "visa" },
+              "parentTransaction": null
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/502",
+              "processedAt": "2026-01-10T09:00:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "CAPTURE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "40.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "visa" },
+              "parentTransaction": { "id": "gid://shopify/OrderTransaction/501" }
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/503",
+              "processedAt": "2026-01-11T09:00:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "CAPTURE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "60.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "Apple Pay" },
+              "parentTransaction": { "id": "gid://shopify/OrderTransaction/501" }
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/504",
+              "processedAt": "2026-04-01T09:00:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "REFUND",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "25.00", "currencyCode": "EUR" } },
+              "paymentDetails": null,
+              "parentTransaction": { "id": "gid://shopify/OrderTransaction/503" }
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/505",
+              "processedAt": "2026-04-02T09:00:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "REFUND",
+              "status": "FAILURE",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "10.00", "currencyCode": "EUR" } },
+              "paymentDetails": null,
+              "parentTransaction": { "id": "gid://shopify/OrderTransaction/502" }
+            }
+          ]
+        },
+        {
+          "id": "gid://shopify/Order/3002",
+          "name": "#3002",
+          "createdAt": "2026-01-06T08:00:00Z",
+          "cancelledAt": null,
+          "displayFinancialStatus": "PAID",
+          "sourceName": "pos",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/802",
+              "processedAt": "2026-01-06T08:05:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "10.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "visa" },
+              "parentTransaction": null
+            }
+          ]
+        },
+        {
+          "id": "gid://shopify/Order/3003",
+          "name": "#3003",
+          "createdAt": "2026-01-07T08:00:00Z",
+          "cancelledAt": null,
+          "displayFinancialStatus": "PAID",
+          "sourceName": "web",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/803",
+              "processedAt": "2026-01-07T08:05:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "test": true,
+              "amountSet": { "shopMoney": { "amount": "10.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "visa" },
+              "parentTransaction": null
+            }
+          ]
+        },
+        {
+          "id": "gid://shopify/Order/3004",
+          "name": "#3004",
+          "createdAt": "2026-01-08T08:00:00Z",
+          "cancelledAt": null,
+          "displayFinancialStatus": "PENDING",
+          "sourceName": "web",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/804",
+              "processedAt": "2026-01-08T08:05:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "SALE",
+              "status": "FAILURE",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "10.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "visa" },
+              "parentTransaction": null
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/805",
+              "processedAt": "2026-01-08T08:06:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "CAPTURE",
+              "status": "PENDING",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "10.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "visa" },
+              "parentTransaction": null
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/806",
+              "processedAt": "2026-01-08T08:07:00Z",
+              "gateway": "manual",
+              "formattedGateway": "Transferencia bancaria",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": { "shopMoney": { "amount": "10.00", "currencyCode": "EUR" } },
+              "paymentDetails": { "paymentMethodName": "bank transfer" },
+              "parentTransaction": null
+            }
+          ]
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": null
+      }
+    }
+  }
+}
