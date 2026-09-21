@@ -1,0 +1,41 @@
+{
+  "data": {
+    "orders": {
+      "nodes": [
+        {
+          "id": "gid://shopify/Order/1001",
+          "name": "#1001",
+          "createdAt": "2026-01-10T09:00:00Z",
+          "cancelledAt": null,
+          "displayFinancialStatus": "PAID",
+          "sourceName": "web",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/501",
+              "processedAt": "2026-01-10T09:05:00Z",
+              "gateway": "shopify_payments",
+              "formattedGateway": "Shopify Payments",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": {
+                "shopMoney": {
+                  "amount": "49.95",
+                  "currencyCode": "EUR"
+                }
+              },
+              "paymentDetails": {
+                "paymentMethodName": "visa"
+              },
+              "parentTransaction": null
+            }
+          ]
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": true,
+        "endCursor": "page-2"
+      }
+    }
+  }
+}

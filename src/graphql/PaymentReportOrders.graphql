@@ -1,0 +1,39 @@
+query PaymentReportOrders($first: Int!, $after: String, $query: String!) {
+  orders(first: $first, after: $after, query: $query, sortKey: CREATED_AT) {
+    nodes {
+      id
+      name
+      createdAt
+      cancelledAt
+      displayFinancialStatus
+      sourceName
+      transactions {
+        id
+        processedAt
+        gateway
+        formattedGateway
+        kind
+        status
+        test
+        amountSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+        paymentDetails {
+          ... on BasePaymentDetails {
+            paymentMethodName
+          }
+        }
+        parentTransaction {
+          id
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

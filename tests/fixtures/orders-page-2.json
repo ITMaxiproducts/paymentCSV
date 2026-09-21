@@ -1,0 +1,41 @@
+{
+  "data": {
+    "orders": {
+      "nodes": [
+        {
+          "id": "gid://shopify/Order/1002",
+          "name": "#1002",
+          "createdAt": "2026-01-11T10:00:00Z",
+          "cancelledAt": null,
+          "displayFinancialStatus": "PAID",
+          "sourceName": "web",
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/502",
+              "processedAt": "2026-01-11T10:05:00Z",
+              "gateway": "paypal_express",
+              "formattedGateway": "PayPal Express Checkout",
+              "kind": "CAPTURE",
+              "status": "SUCCESS",
+              "test": false,
+              "amountSet": {
+                "shopMoney": {
+                  "amount": "25.00",
+                  "currencyCode": "EUR"
+                }
+              },
+              "paymentDetails": null,
+              "parentTransaction": {
+                "id": "gid://shopify/OrderTransaction/402"
+              }
+            }
+          ]
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": "page-2"
+      }
+    }
+  }
+}
