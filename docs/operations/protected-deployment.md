@@ -6,7 +6,9 @@ Shopify Payment CSV debe desplegarse detrás de la protección de acceso, TLS y 
 
 ### Superficie pública
 
-Solo `index.php`, `export.php` y los recursos necesarios de `src` deben quedar accesibles desde el servidor web. `.git`, `.agents`, `tests`, `scripts` y `docs` deben permanecer fuera del document root o bloquearse en la configuración del servidor.
+Solo `index.php`, `export.php` y los recursos necesarios de `src` deben quedar accesibles desde el servidor web. `.env`, `.git`, `.agents`, `tests`, `scripts` y `docs` deben permanecer fuera del document root o bloquearse en la configuración del servidor. `.htaccess` bloquea `.env` en Apache; otros servidores requieren una regla equivalente.
+
+El bootstrap carga el `.env` de la raíz cuando existe y pesa como máximo 64 KiB. Solo admite las cinco claves Shopify documentadas. Una variable ya definida por el proceso nunca se reemplaza con el valor del archivo.
 
 `POST /export.php` acepta exclusivamente:
 
@@ -110,6 +112,7 @@ if (getenv('USE_FIXTURE') === '1') {
 ## 🧐 Ejemplos reales
 
 - [`export.php`](../../export.php): Mapeo de errores y adaptador HTTP público.
+- [`src/php/EnvironmentLoader.php`](../../src/php/EnvironmentLoader.php): Carga restringida de `.env` con prioridad para el entorno del servidor.
 - [`src/php/ExportRequestValidator.php`](../../src/php/ExportRequestValidator.php): Método, contenido, tamaño y forma de la petición.
 - [`src/php/ShopifyAdminClient.php`](../../src/php/ShopifyAdminClient.php): Reintentos acotados y clasificación de fallos.
 - [`src/php/SafeDiagnostics.php`](../../src/php/SafeDiagnostics.php): Diagnósticos sin secretos ni datos personales.

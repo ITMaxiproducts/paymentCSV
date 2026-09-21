@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use PaymentCsv\CsvEncoder;
 use PaymentCsv\DateRange;
+use PaymentCsv\EnvironmentLoader;
 use PaymentCsv\ExportController;
 use PaymentCsv\ExportRequestValidator;
 use PaymentCsv\PaymentMethodNormalizer;
@@ -178,6 +179,78 @@ $runner->test('rejects unknown store keys', static function (): void {
         static fn (): StoreConfig => StoreRegistry::get('unknown'),
         InvalidArgumentException::class,
     );
+});
+
+$runner->test('loads approved dotenv values without overriding server environment', static function (): void {
+    $keys = [
+        'SHOPIFY_OHYEAH_DOMAIN',
+        'SHOPIFY_OHYEAH_ACCESS_TOKEN',
+        'SHOPIFY_HORECA_DOMAIN',
+        'SHOPIFY_HORECA_ACCESS_TOKEN',
+        'SHOPIFY_API_VERSION',
+        'PAYMENTCSV_UNKNOWN',
+    ];
+    $original = [];
+
+    foreach ($keys as $key) {
+        $original[$key] = getenv($key);
+        putenv($key);
+    }
+
+    putenv('SHOPIFY_API_VERSION=2099-01');
+    $path = tempnam(sys_get_temp_dir(), 'paymentcsv-env-');
+
+    if ($path === false) {
+        throw new RuntimeException('Could not create a temporary dotenv file.');
+    }
+
+    file_put_contents($path, implode("\n", [
+        '# Configuración de prueba',
+        'SHOPIFY_OHYEAH_DOMAIN=ohyeah-env.myshopify.com # comentario',
+        'SHOPIFY_OHYEAH_ACCESS_TOKEN="token\\"quoted"',
+        "export SHOPIFY_HORECA_DOMAIN='horeca-env.myshopify.com'",
+        'SHOPIFY_HORECA_ACCESS_TOKEN=horeca-token',
+        'SHOPIFY_API_VERSION=2026-07',
+        'PAYMENTCSV_UNKNOWN=must-not-load',
+        'MALFORMED_LINE',
+    ]));
+
+    try {
+        EnvironmentLoader::load($path);
+        assertSameValue('ohyeah-env.myshopify.com', getenv('SHOPIFY_OHYEAH_DOMAIN'));
+        assertSameValue('token"quoted', getenv('SHOPIFY_OHYEAH_ACCESS_TOKEN'));
+        assertSameValue('horeca-env.myshopify.com', getenv('SHOPIFY_HORECA_DOMAIN'));
+        assertSameValue('horeca-token', getenv('SHOPIFY_HORECA_ACCESS_TOKEN'));
+        assertSameValue('2099-01', getenv('SHOPIFY_API_VERSION'));
+        assertSameValue(false, getenv('PAYMENTCSV_UNKNOWN'));
+
+        putenv('SHOPIFY_OHYEAH_DOMAIN');
+        file_put_contents($path, str_repeat('#', 65_537));
+        EnvironmentLoader::load($path);
+        assertSameValue(false, getenv('SHOPIFY_OHYEAH_DOMAIN'));
+    } finally {
+        unlink($path);
+
+        foreach ($original as $key => $value) {
+            $value === false ? putenv($key) : putenv($key . '=' . $value);
+        }
+    }
+});
+
+$runner->test('keeps dotenv secrets ignored and protected from Apache', static function (): void {
+    $gitignore = file_get_contents(__DIR__ . '/../.gitignore');
+    $example = file_get_contents(__DIR__ . '/../.env.example');
+    $apache = file_get_contents(__DIR__ . '/../.htaccess');
+
+    if ($gitignore === false || $example === false || $apache === false) {
+        throw new RuntimeException('Could not inspect dotenv protection files.');
+    }
+
+    assertContainsText('/.env', $gitignore);
+    assertContainsText('!/.env.example', $gitignore);
+    assertContainsText('SHOPIFY_OHYEAH_ACCESS_TOKEN=', $example);
+    assertNotContainsText('test-token', $example);
+    assertContainsText('Require all denied', $apache);
 });
 
 $runner->test('normalizes card wallets and PayPal', static function (): void {

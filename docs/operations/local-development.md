@@ -11,9 +11,19 @@ El proyecto se ejecuta directamente con PHP y no necesita instalar dependencias.
 - Node.js opcional para comprobar la sintaxis de JavaScript.
 - Tokens de Shopify con `read_orders` y, para históricos, `read_all_orders`.
 
-### Variables de entorno
+### Archivo `.env`
 
-Ejemplo de una sesión de PowerShell local:
+Copia la plantilla versionada y completa los valores locales:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+`.env` está ignorado por Git. El bootstrap solo acepta las cinco claves Shopify y no sobrescribe valores que ya existan en el proceso. Los comentarios, valores entre comillas y líneas con prefijo `export` están admitidos.
+
+### Variables del proceso
+
+Como alternativa, o para prevalecer sobre `.env`, configura las variables en la sesión que inicia PHP:
 
 ```powershell
 $env:SHOPIFY_OHYEAH_DOMAIN = "ohyeah.myshopify.com"
@@ -23,7 +33,7 @@ $env:SHOPIFY_HORECA_ACCESS_TOKEN = "<token>"
 $env:SHOPIFY_API_VERSION = "2026-07"
 ```
 
-No añadir valores reales a archivos versionados.
+No añadir valores reales a archivos versionados ni a `.env.example`.
 
 ### Servidor local
 
@@ -68,7 +78,8 @@ El verificador:
 ### Despliegue
 
 - Ejecutar con PHP 8.1+ y cURL sobre HTTPS.
-- Configurar las cinco variables en el proceso del servidor o en su gestor de secretos.
+- Completar un `.env` no versionado o configurar las cinco variables en el proceso del servidor o en su gestor de secretos.
+- Mantener `.env` fuera del document root o bloquearlo. `.htaccess` incluye la regla para Apache; Nginx, IIS y otros servidores necesitan una regla equivalente.
 - Conceder `read_orders` y `read_all_orders` a las aplicaciones de ambas tiendas.
 - Proteger externamente la ruta antes de publicarla; la aplicación no implementa autenticación.
 - Impedir que el servidor publique `.git`, `.agents`, `tests`, `scripts` y `docs`.
@@ -83,6 +94,7 @@ La suite cubre intervalos de fechas, límite de 92 días, tiendas permitidas, no
 ### Diagnóstico básico
 
 - Error de configuración: comprobar que las cinco variables de entorno existen en el mismo proceso que ejecuta PHP.
+- `.env` sin efecto: comprobar que está en la raíz del proyecto, que es legible y que ninguna variable vacía del proceso la está sustituyendo.
 - Error de dominio: utilizar exclusivamente el hostname `*.myshopify.com`, sin rutas adicionales.
 - Error de cURL: habilitar la extensión en el `php.ini` utilizado por el servidor.
 - Pedidos históricos ausentes: comprobar el permiso `read_all_orders` en ambas aplicaciones.

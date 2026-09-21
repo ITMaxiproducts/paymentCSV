@@ -19,6 +19,7 @@ La aplicación es una herramienta web pequeña y sin dependencias de runtime que
 index.php
   -> src/js/main.js valida tienda y fechas
   -> POST /export.php
+  -> EnvironmentLoader carga .env sin sobrescribir el entorno del proceso
   -> ExportRequestValidator valida transporte y forma de la petición
   -> ExportController valida y coordina la petición
   -> StoreRegistry carga la tienda desde variables de entorno
@@ -82,6 +83,7 @@ Las Fases 1, 2 y 3 permiten:
 - Generar un CSV de solo cabeceras cuando no existen coincidencias e informar del resultado al navegador.
 - Registrar diagnósticos operativos sin secretos, variables GraphQL, datos personales o respuestas completas.
 - Recuperar la interfaz tras fallos y avisar cuando una exportación tarda más de lo habitual.
+- Cargar las cinco variables Shopify desde un `.env` ignorado, manteniendo prioridad para la configuración del proceso.
 
 ## 🏆 Beneficios
 
@@ -111,6 +113,7 @@ $rows = iterator_to_array($service->generate($store, $range), false);
 
 - [`index.php`](../../index.php): Pantalla y formulario de exportación.
 - [`export.php`](../../export.php): Adaptador HTTP público.
+- [`src/php/EnvironmentLoader.php`](../../src/php/EnvironmentLoader.php): Carga permitida y no destructiva de `.env`.
 - [`src/php/ExportController.php`](../../src/php/ExportController.php): Coordinación del caso de uso.
 - [`src/php/PaymentReportService.php`](../../src/php/PaymentReportService.php): Paginación de pedidos.
 - [`src/php/PaymentReportRowFactory.php`](../../src/php/PaymentReportRowFactory.php): Selección y transformación de pagos.

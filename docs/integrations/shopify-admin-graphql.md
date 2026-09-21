@@ -13,7 +13,7 @@ ohyeah
 horeca
 ```
 
-Cada clave se resuelve con variables de entorno del servidor:
+El bootstrap puede cargar estas claves desde el `.env` no versionado de la raíz. `StoreRegistry` las resuelve mediante el entorno del proceso, por lo que una variable definida por Apache, PHP-FPM, Docker o el sistema prevalece sobre el archivo:
 
 ```text
 SHOPIFY_OHYEAH_DOMAIN
@@ -23,7 +23,7 @@ SHOPIFY_HORECA_ACCESS_TOKEN
 SHOPIFY_API_VERSION
 ```
 
-Los dominios deben utilizar el formato `tienda.myshopify.com`. Los tokens no deben guardarse en el repositorio, JavaScript, HTML, CSV o mensajes de error.
+Los dominios deben utilizar el formato `tienda.myshopify.com`. Los tokens no deben guardarse en el repositorio, `.env.example`, JavaScript, HTML, CSV o mensajes de error. El `.env` real debe permanecer ignorado y bloqueado frente a descargas HTTP.
 
 ### Permisos
 
@@ -111,6 +111,7 @@ fetch('https://tienda.myshopify.com/admin/api/...', {
 ## 🧐 Ejemplos reales
 
 - [`src/graphql/PaymentReportOrders.graphql`](../../src/graphql/PaymentReportOrders.graphql): Operación GraphQL validada.
+- [`src/php/EnvironmentLoader.php`](../../src/php/EnvironmentLoader.php): Carga restringida del `.env` sin sobrescribir el entorno del servidor.
 - [`src/php/StoreRegistry.php`](../../src/php/StoreRegistry.php): Lista permitida y lectura del entorno.
 - [`src/php/StoreConfig.php`](../../src/php/StoreConfig.php): Validación de dominio, token y versión.
 - [`src/php/ShopifyAdminClient.php`](../../src/php/ShopifyAdminClient.php): Transporte cURL y manejo de respuestas.

@@ -14,7 +14,11 @@ La aplicación no incluye autenticación propia. La restricción de acceso, TLS,
 
 ## Configuración
 
-Configura estas cinco variables en el proceso de PHP o en el gestor seguro de secretos del servidor:
+El proyecto incluye `.env.example`. Cópialo como `.env` y completa estas cinco variables:
+
+```powershell
+Copy-Item .env.example .env
+```
 
 ```text
 SHOPIFY_OHYEAH_DOMAIN=ohyeah.myshopify.com
@@ -24,7 +28,9 @@ SHOPIFY_HORECA_ACCESS_TOKEN=<token secreto>
 SHOPIFY_API_VERSION=2026-07
 ```
 
-No guardes tokens en el repositorio, el document root, archivos `.env` publicados, JavaScript o registros.
+El cargador admite comentarios, valores entre comillas y el prefijo `export`. Solo carga las cinco claves aprobadas y no sobrescribe variables que Apache, PHP-FPM, Docker o el sistema ya hayan definido; la configuración del proceso tiene prioridad sobre `.env`.
+
+`.env` está ignorado por Git y Apache lo bloquea mediante `.htaccess`. No guardes tokens en el repositorio, `.env.example`, JavaScript o registros. En servidores que no usen Apache debes aplicar una regla equivalente para impedir cualquier descarga de `.env`.
 
 ## Despliegue protegido
 
@@ -32,7 +38,7 @@ La convención completa de seguridad, respuestas, reintentos y diagnóstico est�
 
 1. Copia la aplicación a una ruta servida por PHP 8.1+ y habilita cURL.
 2. Evita publicar `.git`, `.agents`, `tests`, `scripts` y `docs` desde el servidor web; el punto de entrada público solo necesita `index.php`, `export.php` y `src`.
-3. Inyecta las cinco variables desde la configuración del servicio PHP, no desde archivos descargables.
+3. Completa un `.env` protegido o inyecta las cinco variables desde la configuración del servicio PHP. Las variables del proceso prevalecen.
 4. Confirma `read_orders` y `read_all_orders` en ambas aplicaciones de Shopify.
 5. Activa HTTPS y la protección de acceso externa antes de habilitar la herramienta para usuarios.
 6. Ejecuta la verificación y después una exportación de prueba con una tienda no productiva o un intervalo controlado.
