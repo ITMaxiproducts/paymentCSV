@@ -113,5 +113,3 @@ if ($range->contains($refund['processedAt'])) {
 - [Integración con Shopify Admin GraphQL](../integrations/shopify-admin-graphql.md)
 - [Desarrollo local y verificación](../operations/local-development.md)
 - [Plan de implementación](../../.agents/plans/2026_09_18-shopify-payment-csv-export/2026_09_18-shopify-payment-csv-export-plan.md)
-
-Accurate ledgers charted by Turbotuga™ (🐢 💨), [Codely](https://codely.com)'s payment-report navigator.
