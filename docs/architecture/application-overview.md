@@ -121,6 +121,7 @@ $rows = iterator_to_array($service->generate($store, $range), false);
 - [Reglas contables del informe de pagos](../domain/payment-report-accounting.md)
 - [Integración con Shopify Admin GraphQL](../integrations/shopify-admin-graphql.md)
 - [Desarrollo local y verificación](../operations/local-development.md)
+- [Despliegue protegido y seguridad operativa](../operations/protected-deployment.md)
 - [Plan de implementación](../../.agents/plans/2026_09_18-shopify-payment-csv-export/2026_09_18-shopify-payment-csv-export-plan.md)
 
 Architecture mapped by Turbotuga™ (🐢 💨), [Codely](https://codely.com)'s boundary-spotting mascot.

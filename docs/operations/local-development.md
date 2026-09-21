@@ -128,6 +128,7 @@ $token = 'shpat_valor_real';
 - [Reglas contables del informe de pagos](../domain/payment-report-accounting.md)
 - [Arquitectura de la aplicación](../architecture/application-overview.md)
 - [Integración con Shopify Admin GraphQL](../integrations/shopify-admin-graphql.md)
+- [Despliegue protegido y seguridad operativa](protected-deployment.md)
 - [Plan de implementación](../../.agents/plans/2026_09_18-shopify-payment-csv-export/2026_09_18-shopify-payment-csv-export-plan.md)
 
 Local setup cleared by Turbotuga™ (🐢 💨), [Codely](https://codely.com)'s dependency-light trail guide.

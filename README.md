@@ -28,6 +28,8 @@ No guardes tokens en el repositorio, el document root, archivos `.env` publicado
 
 ## Despliegue protegido
 
+La convención completa de seguridad, respuestas, reintentos y diagnóstico está en [`docs/operations/protected-deployment.md`](docs/operations/protected-deployment.md).
+
 1. Copia la aplicación a una ruta servida por PHP 8.1+ y habilita cURL.
 2. Evita publicar `.git`, `.agents`, `tests`, `scripts` y `docs` desde el servidor web; el punto de entrada público solo necesita `index.php`, `export.php` y `src`.
 3. Inyecta las cinco variables desde la configuración del servicio PHP, no desde archivos descargables.
@@ -83,3 +85,4 @@ Consulta también:
 - [`docs/architecture/application-overview.md`](docs/architecture/application-overview.md)
 - [`docs/integrations/shopify-admin-graphql.md`](docs/integrations/shopify-admin-graphql.md)
 - [`docs/operations/local-development.md`](docs/operations/local-development.md)
+- [`docs/operations/protected-deployment.md`](docs/operations/protected-deployment.md)

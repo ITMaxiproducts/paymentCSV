@@ -123,6 +123,7 @@ fetch('https://tienda.myshopify.com/admin/api/...', {
 - [Reglas contables del informe de pagos](../domain/payment-report-accounting.md)
 - [Arquitectura de la aplicación](../architecture/application-overview.md)
 - [Desarrollo local y verificación](../operations/local-development.md)
+- [Despliegue protegido y seguridad operativa](../operations/protected-deployment.md)
 - [Documentación oficial de `orders`](https://shopify.dev/docs/api/admin-graphql/2026-07/queries/orders)
 - [Documentación oficial de `OrderTransaction`](https://shopify.dev/docs/api/admin-graphql/2026-07/objects/OrderTransaction)
 
