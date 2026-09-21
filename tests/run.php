@@ -5,12 +5,21 @@ declare(strict_types=1);
 use PaymentCsv\CsvEncoder;
 use PaymentCsv\DateRange;
 use PaymentCsv\ExportController;
+use PaymentCsv\ExportRequestValidator;
 use PaymentCsv\PaymentMethodNormalizer;
 use PaymentCsv\PaymentReportOrders;
+use PaymentCsv\PaymentReportRow;
 use PaymentCsv\PaymentReportService;
+use PaymentCsv\RequestValidationException;
+use PaymentCsv\ShopifyAuthenticationException;
 use PaymentCsv\ShopifyAdminClient;
+use PaymentCsv\ShopifyHttpResponse;
 use PaymentCsv\ShopifyPermissionException;
+use PaymentCsv\ShopifyThrottleException;
+use PaymentCsv\ShopifyTransportException;
+use PaymentCsv\ShopifyUnavailableException;
 use PaymentCsv\StoreConfig;
+use PaymentCsv\StoreConfigurationException;
 use PaymentCsv\StoreRegistry;
 
 require_once __DIR__ . '/../src/bootstrap.php';
@@ -54,6 +63,13 @@ function assertContainsText(string $needle, string $haystack): void
 {
     if (!str_contains($haystack, $needle)) {
         throw new RuntimeException(sprintf('Expected output to contain %s.', $needle));
+    }
+}
+
+function assertNotContainsText(string $needle, string $haystack): void
+{
+    if (str_contains($haystack, $needle)) {
+        throw new RuntimeException(sprintf('Expected output not to contain %s.', $needle));
     }
 }
 
@@ -113,6 +129,22 @@ function configureTestStore(): void
     putenv('SHOPIFY_HORECA_DOMAIN=horeca-test.myshopify.com');
     putenv('SHOPIFY_HORECA_ACCESS_TOKEN=test-token');
     putenv('SHOPIFY_API_VERSION=2026-07');
+}
+
+/**
+ * @param array<string, mixed> $server
+ * @param array<string, mixed> $input
+ */
+function assertRequestStatus(int $status, array $server, array $input, array $files = []): void
+{
+    try {
+        ExportRequestValidator::validate($server, $input, $files);
+    } catch (RequestValidationException $exception) {
+        assertSameValue($status, $exception->status);
+        return;
+    }
+
+    throw new RuntimeException(sprintf('Expected request status %d.', $status));
 }
 
 $runner = new TestRunner();
@@ -300,6 +332,284 @@ $runner->test('builds a successful export result with a deterministic filename',
 
     assertSameValue('pagos-shopify-ohyeah-2026-01-01-2026-01-31.csv', $result->filename);
     assertSameValue(1, count($result->rows));
+});
+
+$runner->test('validates HTTP method, multipart content type, request size and fields', static function (): void {
+    $validServer = [
+        'REQUEST_METHOD' => 'POST',
+        'CONTENT_TYPE' => 'multipart/form-data; boundary=payment-csv',
+        'CONTENT_LENGTH' => '256',
+    ];
+    $validInput = [
+        'shop' => 'ohyeah',
+        'date_from' => '2026-01-01',
+        'date_to' => '2026-01-31',
+    ];
+
+    assertSameValue($validInput, ExportRequestValidator::validate($validServer, $validInput));
+    assertRequestStatus(405, ['REQUEST_METHOD' => 'GET'], []);
+    assertRequestStatus(415, [
+        'REQUEST_METHOD' => 'POST',
+        'CONTENT_TYPE' => 'application/json',
+    ], $validInput);
+    assertRequestStatus(413, [
+        'REQUEST_METHOD' => 'POST',
+        'CONTENT_TYPE' => 'multipart/form-data; boundary=x',
+        'CONTENT_LENGTH' => (string) (ExportRequestValidator::MAX_BODY_BYTES + 1),
+    ], $validInput);
+    assertRequestStatus(422, $validServer, $validInput + ['unexpected' => 'value']);
+    assertRequestStatus(422, $validServer, [
+        'shop' => ['ohyeah'],
+        'date_from' => '2026-01-01',
+        'date_to' => '2026-01-31',
+    ]);
+    assertRequestStatus(422, $validServer, $validInput, ['upload' => ['name' => 'secret.txt']]);
+});
+
+$runner->test('reports missing store configuration without naming environment variables', static function (): void {
+    putenv('SHOPIFY_HORECA_ACCESS_TOKEN');
+
+    try {
+        StoreRegistry::get('horeca');
+    } catch (StoreConfigurationException $exception) {
+        assertContainsText('no está configurada', $exception->getMessage());
+        assertNotContainsText('SHOPIFY_HORECA_ACCESS_TOKEN', $exception->getMessage());
+        configureTestStore();
+        return;
+    }
+
+    configureTestStore();
+    throw new RuntimeException('Expected a StoreConfigurationException to be thrown.');
+});
+
+$runner->test('retries GraphQL throttling using Shopify throttle cost information', static function (): void {
+    $attempts = 0;
+    $delays = [];
+    $diagnostics = [];
+    $client = new ShopifyAdminClient(
+        transport: static function () use (&$attempts): array {
+            $attempts++;
+
+            if ($attempts < 3) {
+                return [
+                    'errors' => [[
+                        'message' => 'Throttled',
+                        'extensions' => ['code' => 'THROTTLED'],
+                    ]],
+                    'extensions' => [
+                        'cost' => [
+                            'requestedQueryCost' => 100,
+                            'throttleStatus' => [
+                                'currentlyAvailable' => 0,
+                                'restoreRate' => 50,
+                            ],
+                        ],
+                    ],
+                ];
+            }
+
+            return ['data' => ['shop' => ['name' => 'OHYEAH']]];
+        },
+        sleeper: static function (int $delay) use (&$delays): void {
+            $delays[] = $delay;
+        },
+        diagnostics: static function (string $event, array $context) use (&$diagnostics): void {
+            $diagnostics[] = [$event, $context];
+        },
+    );
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'sensitive-token', '2026-07');
+    $data = $client->query($store, 'query PaymentReportOrders { shop { name } }', []);
+
+    assertSameValue(3, $attempts);
+    assertSameValue([2000, 2000], $delays);
+    assertSameValue('OHYEAH', $data['shop']['name']);
+    assertSameValue('PaymentReportOrders', $diagnostics[0][1]['operation']);
+    assertNotContainsText('sensitive-token', json_encode($diagnostics, JSON_THROW_ON_ERROR));
+});
+
+$runner->test('retries transient HTTP responses and honors Retry-After', static function (): void {
+    $attempts = 0;
+    $delays = [];
+    $client = new ShopifyAdminClient(
+        transport: static function () use (&$attempts): ShopifyHttpResponse {
+            $attempts++;
+
+            return $attempts === 1
+                ? new ShopifyHttpResponse(503, 'temporary', ['retry-after' => '0.5'])
+                : new ShopifyHttpResponse(200, '{"data":{"shop":{"name":"HORECA"}}}');
+        },
+        sleeper: static function (int $delay) use (&$delays): void {
+            $delays[] = $delay;
+        },
+        diagnostics: static function (string $event, array $context): void {
+        },
+    );
+    $store = new StoreConfig('horeca', 'horeca-test.myshopify.com', 'test-token', '2026-07');
+    $data = $client->query($store, 'query PaymentReportOrders { shop { name } }', []);
+
+    assertSameValue(2, $attempts);
+    assertSameValue([500], $delays);
+    assertSameValue('HORECA', $data['shop']['name']);
+});
+
+$runner->test('retries transport timeouts and then recovers', static function (): void {
+    $attempts = 0;
+    $delays = [];
+    $client = new ShopifyAdminClient(
+        transport: static function () use (&$attempts): array {
+            $attempts++;
+
+            if ($attempts === 1) {
+                throw new ShopifyTransportException('timeout with sensitive-token');
+            }
+
+            return ['data' => ['shop' => []]];
+        },
+        maxAttempts: 2,
+        sleeper: static function (int $delay) use (&$delays): void {
+            $delays[] = $delay;
+        },
+        diagnostics: static function (string $event, array $context): void {
+        },
+    );
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'sensitive-token', '2026-07');
+
+    $client->query($store, 'query PaymentReportOrders { shop { name } }', []);
+    assertSameValue(2, $attempts);
+    assertSameValue([250], $delays);
+});
+
+$runner->test('maps authentication, exhausted throttling, malformed JSON and GraphQL failures safely', static function (): void {
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'sensitive-token', '2026-07');
+    $noopDiagnostics = static function (string $event, array $context): void {
+    };
+
+    $authenticationClient = new ShopifyAdminClient(
+        transport: static fn (): ShopifyHttpResponse => new ShopifyHttpResponse(401, 'sensitive-token'),
+        diagnostics: $noopDiagnostics,
+    );
+    assertThrows(
+        static fn (): array => $authenticationClient->query($store, 'query PaymentReportOrders { shop { name } }', []),
+        ShopifyAuthenticationException::class,
+    );
+
+    $throttleClient = new ShopifyAdminClient(
+        transport: static fn (): ShopifyHttpResponse => new ShopifyHttpResponse(429, 'sensitive-token'),
+        maxAttempts: 2,
+        sleeper: static function (int $delay): void {
+        },
+        diagnostics: $noopDiagnostics,
+    );
+    assertThrows(
+        static fn (): array => $throttleClient->query($store, 'query PaymentReportOrders { shop { name } }', []),
+        ShopifyThrottleException::class,
+    );
+
+    $malformedClient = new ShopifyAdminClient(
+        transport: static fn (): ShopifyHttpResponse => new ShopifyHttpResponse(200, '{not-json'),
+        diagnostics: $noopDiagnostics,
+    );
+    assertThrows(
+        static fn (): array => $malformedClient->query($store, 'query PaymentReportOrders { shop { name } }', []),
+        ShopifyUnavailableException::class,
+    );
+
+    $graphqlClient = new ShopifyAdminClient(
+        transport: static fn (): array => [
+            'errors' => [['message' => 'Remote failure sensitive-token']],
+        ],
+        diagnostics: $noopDiagnostics,
+    );
+
+    try {
+        $graphqlClient->query($store, 'query PaymentReportOrders { shop { name } }', []);
+    } catch (ShopifyUnavailableException $exception) {
+        assertNotContainsText('sensitive-token', $exception->getMessage());
+        assertNotContainsText('Remote failure', $exception->getMessage());
+        return;
+    }
+
+    throw new RuntimeException('Expected a ShopifyUnavailableException to be thrown.');
+});
+
+$runner->test('escapes CSV fields, neutralizes formulas and preserves UTF-8 with CRLF records', static function (): void {
+    $row = new PaymentReportRow(
+        '2026-01-01T10:00:00+01:00',
+        '2026-01-01T10:05:00+01:00',
+        '=HYPERLINK("https://example.invalid")',
+        "PAGADO,\nRevisado",
+        '+cmd',
+        'Pasarela "España"',
+        '@CAPTURE',
+        '-SUCCESS',
+        '10.00',
+        'EUR',
+    );
+    $csv = CsvEncoder::encode([$row]);
+    $stream = fopen('php://temp', 'w+b');
+
+    if ($stream === false) {
+        throw new RuntimeException('Could not create CSV test stream.');
+    }
+
+    fwrite($stream, $csv);
+    rewind($stream);
+    $headers = fgetcsv($stream, null, ',', '"', '');
+    $values = fgetcsv($stream, null, ',', '"', '');
+    fclose($stream);
+
+    assertSameValue(CsvEncoder::HEADERS, $headers);
+    assertSameValue("'=HYPERLINK(\"https://example.invalid\")", $values[2] ?? null);
+    assertSameValue("PAGADO,\nRevisado", $values[3] ?? null);
+    assertSameValue("'+cmd", $values[4] ?? null);
+    assertSameValue('Pasarela "España"', $values[5] ?? null);
+    assertSameValue("'@CAPTURE", $values[6] ?? null);
+    assertSameValue("'-SUCCESS", $values[7] ?? null);
+    assertContainsText("\r\n", $csv);
+    assertContainsText('España', $csv);
+});
+
+$runner->test('creates a header-only CSV and exposes clear empty-report UI behavior', static function (): void {
+    $client = new ShopifyAdminClient(static fn (): array => [
+        'data' => [
+            'orders' => [
+                'nodes' => [],
+                'pageInfo' => ['hasNextPage' => false, 'endCursor' => null],
+            ],
+        ],
+    ]);
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
+    $range = DateRange::fromInput('2026-01-01', '2026-01-31');
+    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+    $csv = CsvEncoder::encode($rows);
+    $javascript = file_get_contents(__DIR__ . '/../src/js/main.js');
+    $response = file_get_contents(__DIR__ . '/../src/php/CsvResponse.php');
+
+    if ($javascript === false || $response === false) {
+        throw new RuntimeException('Could not inspect empty export behavior.');
+    }
+
+    assertSameValue([], $rows);
+    assertSameValue(1, substr_count($csv, "\r\n"));
+    assertSameValue(CsvEncoder::HEADERS, str_getcsv(rtrim($csv, "\r\n"), ',', '"', ''));
+    assertContainsText("header('X-Export-Row-Count: '", $response);
+    assertContainsText('No se encontraron pedidos coincidentes', $javascript);
+});
+
+$runner->test('keeps download and error responses stable and free of internal details', static function (): void {
+    $endpoint = file_get_contents(__DIR__ . '/../export.php');
+    $response = file_get_contents(__DIR__ . '/../src/php/CsvResponse.php');
+
+    if ($endpoint === false || $response === false) {
+        throw new RuntimeException('Could not inspect the HTTP response contract.');
+    }
+
+    assertContainsText("header('Content-Type: text/csv; charset=UTF-8')", $response);
+    assertContainsText("header('Content-Disposition: attachment; filename=\"'", $response);
+    assertContainsText("header('X-Content-Type-Options: nosniff')", $response);
+    assertContainsText("respondWithError(500, 'No se ha podido generar el CSV.", $endpoint);
+    assertNotContainsText('echo $exception', $endpoint);
+    assertNotContainsText('getTrace', $endpoint);
 });
 
 $runner->finish();

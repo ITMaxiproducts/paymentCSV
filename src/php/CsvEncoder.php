@@ -8,6 +8,9 @@ use RuntimeException;
 
 final class CsvEncoder
 {
+    /** @var list<int> */
+    private const TEXT_COLUMN_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+
     /**
      * @var list<string>
      */
@@ -35,10 +38,22 @@ final class CsvEncoder
             throw new RuntimeException('No se ha podido crear el CSV.');
         }
 
-        fputcsv($stream, self::HEADERS, ',', '"', '');
+        if (fputcsv($stream, self::HEADERS, ',', '"', '', "\r\n") === false) {
+            fclose($stream);
+            throw new RuntimeException('No se han podido escribir las cabeceras del CSV.');
+        }
 
         foreach ($rows as $row) {
-            fputcsv($stream, $row->toCsvRow(), ',', '"', '');
+            $values = $row->toCsvRow();
+
+            foreach (self::TEXT_COLUMN_INDEXES as $index) {
+                $values[$index] = self::protectFormula($values[$index]);
+            }
+
+            if (fputcsv($stream, $values, ',', '"', '', "\r\n") === false) {
+                fclose($stream);
+                throw new RuntimeException('No se ha podido escribir una fila del CSV.');
+            }
         }
 
         rewind($stream);
@@ -50,5 +65,12 @@ final class CsvEncoder
         }
 
         return $csv;
+    }
+
+    private static function protectFormula(string $value): string
+    {
+        return preg_match('/^[\x00-\x20]*[=+\-@]/u', $value) === 1
+            ? "'" . $value
+            : $value;
     }
 }

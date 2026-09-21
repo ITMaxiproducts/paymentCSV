@@ -62,11 +62,24 @@ Una transacción de pago es válida cuando:
 - El método se normaliza como `card` o `paypal`.
 - `amountSet.shopMoney.currencyCode` es `EUR`.
 
-PHP excluye pedidos cancelados y aquellos cuyo `sourceName` no es `web`. Agrega todas las ventas y capturas válidas por céntimos, conserva la fecha de la primera, combina valores distintos en orden cronológico y resta cada transacción `REFUND` satisfactoria cuyo `parentTransaction.id` apunta a uno de esos cobros. Los reembolsos se aplican aunque su `processedAt` sea posterior al intervalo, y el neto nunca baja de `0.00 EUR`.
+PHP aplica las [reglas contables del informe de pagos](../domain/payment-report-accounting.md): excluye pedidos no admitidos, agrega los cobros por céntimos y resta los reembolsos vinculados aunque sean posteriores al intervalo.
 
 ### Errores
 
-`ShopifyAdminClient` transforma fallos HTTP, JSON o GraphQL en excepciones internas. Los errores de acceso a pedidos indican de forma segura que deben comprobarse `read_orders` y `read_all_orders`; no incluyen el mensaje remoto, el payload, el token ni una traza. `export.php` conserva esa indicación y generaliza el resto de fallos.
+`ShopifyAdminClient` transforma fallos HTTP, JSON o GraphQL en excepciones internas con mensajes seguros. Los errores de acceso a pedidos indican que deben comprobarse `read_orders` y `read_all_orders`; los de autenticación, throttling e indisponibilidad tienen copias distintas. Ninguna respuesta al navegador incluye el mensaje remoto, el payload, el token, una ruta o una traza.
+
+### Reintentos y throttling
+
+- Se realizan como máximo tres intentos.
+- Se reintentan errores de transporte y estados HTTP `408`, `429`, `500`, `502`, `503` y `504`.
+- Un error GraphQL con código `THROTTLED` también se reintenta, aunque el estado HTTP sea `200`.
+- `Retry-After` tiene prioridad cuando Shopify lo proporciona.
+- Para throttling GraphQL, la espera se calcula con `requestedQueryCost`, `currentlyAvailable` y `restoreRate` de `extensions.cost.throttleStatus`.
+- Si no existen datos suficientes se usa backoff exponencial desde 250 ms. Cada espera queda limitada a cinco segundos.
+
+### Diagnósticos
+
+Cada reintento o fallo terminal registra un evento `[payment-csv]` con la tienda, la operación GraphQL, la categoría, el intento, el estado HTTP y la espera, cuando corresponda. No se registran tokens, variables, consultas completas, datos de pedidos ni cuerpos de respuesta.
 
 ## 🏆 Beneficios
 
@@ -101,11 +114,13 @@ fetch('https://tienda.myshopify.com/admin/api/...', {
 - [`src/php/StoreRegistry.php`](../../src/php/StoreRegistry.php): Lista permitida y lectura del entorno.
 - [`src/php/StoreConfig.php`](../../src/php/StoreConfig.php): Validación de dominio, token y versión.
 - [`src/php/ShopifyAdminClient.php`](../../src/php/ShopifyAdminClient.php): Transporte cURL y manejo de respuestas.
+- [`src/php/SafeDiagnostics.php`](../../src/php/SafeDiagnostics.php): Registro operativo limitado a metadatos no sensibles.
 - [`src/php/PaymentReportService.php`](../../src/php/PaymentReportService.php): Paginación por cursor.
 - [`tests/fixtures`](../../tests/fixtures): Respuestas de Shopify usadas en pruebas.
 
 ## 🔗 Acuerdos relacionados
 
+- [Reglas contables del informe de pagos](../domain/payment-report-accounting.md)
 - [Arquitectura de la aplicación](../architecture/application-overview.md)
 - [Desarrollo local y verificación](../operations/local-development.md)
 - [Documentación oficial de `orders`](https://shopify.dev/docs/api/admin-graphql/2026-07/queries/orders)

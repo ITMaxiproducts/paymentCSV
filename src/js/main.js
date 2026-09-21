@@ -14,6 +14,10 @@
     const errorBox = document.querySelector('#form-error');
     const dateFrom = document.querySelector('#date-from');
     const dateTo = document.querySelector('#date-to');
+    let submitting = false;
+    let slowExportTimer = null;
+
+    class ExportError extends Error {}
 
     const inclusiveDays = (from, to) => {
         const [fromYear, fromMonth, fromDay] = from.split('-').map(Number);
@@ -25,6 +29,7 @@
     };
 
     const setBusy = (busy) => {
+        submitting = busy;
         submitButton.disabled = busy;
         submitSpinner.classList.toggle('d-none', !busy);
         submitLabel.textContent = busy ? 'Generando CSV...' : 'Generar CSV';
@@ -77,14 +82,43 @@
         document.body.appendChild(link);
         link.click();
         link.remove();
-        URL.revokeObjectURL(url);
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    };
+
+    const errorFromResponse = async (response) => {
+        const contentType = response.headers.get('Content-Type') || '';
+
+        if (!contentType.toLowerCase().includes('application/json')) {
+            return 'No se ha podido generar el CSV.';
+        }
+
+        try {
+            const payload = await response.json();
+
+            return typeof payload.error === 'string' && payload.error !== ''
+                ? payload.error
+                : 'No se ha podido generar el CSV.';
+        } catch {
+            return 'No se ha podido generar el CSV.';
+        }
     };
 
     dateFrom.addEventListener('change', validateDateRange);
     dateTo.addEventListener('change', validateDateRange);
+    form.addEventListener('input', () => {
+        if (!submitting) {
+            clearError();
+            status.textContent = '';
+        }
+    });
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
+
+        if (submitting) {
+            return;
+        }
+
         clearError();
         validateDateRange();
         form.classList.add('was-validated');
@@ -96,6 +130,9 @@
 
         setBusy(true);
         status.textContent = 'Consultando los pedidos en Shopify...';
+        slowExportTimer = window.setTimeout(() => {
+            status.textContent = 'La exportación está tardando más de lo habitual. Puedes mantener esta página abierta.';
+        }, 12000);
 
         try {
             const response = await fetch(form.action, {
@@ -108,20 +145,27 @@
             });
 
             if (!response.ok) {
-                const contentType = response.headers.get('Content-Type') || '';
-                const payload = contentType.includes('application/json')
-                    ? await response.json()
-                    : { error: 'No se ha podido generar el CSV.' };
+                throw new ExportError(await errorFromResponse(response));
+            }
 
-                throw new Error(payload.error || 'No se ha podido generar el CSV.');
+            const contentType = response.headers.get('Content-Type') || '';
+
+            if (!contentType.toLowerCase().includes('text/csv')) {
+                throw new ExportError('El servidor no ha devuelto un archivo CSV válido.');
             }
 
             const blob = await response.blob();
             downloadBlob(blob, filenameFromResponse(response));
-            status.textContent = 'El CSV se ha generado correctamente.';
+            status.textContent = response.headers.get('X-Export-Row-Count') === '0'
+                ? 'No se encontraron pedidos coincidentes. Se ha descargado un CSV solo con las cabeceras.'
+                : 'El CSV se ha generado correctamente.';
         } catch (error) {
-            showError(error instanceof Error ? error.message : 'No se ha podido generar el CSV.');
+            showError(error instanceof ExportError
+                ? error.message
+                : 'No se ha podido conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.');
         } finally {
+            window.clearTimeout(slowExportTimer);
+            slowExportTimer = null;
             setBusy(false);
         }
     });

@@ -19,6 +19,7 @@ La aplicación es una herramienta web pequeña y sin dependencias de runtime que
 index.php
   -> src/js/main.js valida tienda y fechas
   -> POST /export.php
+  -> ExportRequestValidator valida transporte y forma de la petición
   -> ExportController valida y coordina la petición
   -> StoreRegistry carga la tienda desde variables de entorno
   -> PaymentReportService pagina pedidos desde Shopify
@@ -57,10 +58,11 @@ Fecha del pedido,Fecha de la transacción,Referencia del pedido,Estado del pago,
 ```
 
 El separador es una coma, los decimales usan punto, las fechas se convierten a `Europe/Madrid` y los importes se expresan en EUR con dos decimales.
+Los registros terminan en CRLF, los campos siguen el escape CSV estándar y las celdas de texto que podrían interpretarse como fórmulas se neutralizan con un apóstrofo inicial.
 
 ### Alcance implementado
 
-Las Fases 1 y 2 permiten:
+Las Fases 1, 2 y 3 permiten:
 
 - Elegir OHYEAH o HORECA.
 - Seleccionar un intervalo inclusivo de hasta 92 días.
@@ -74,10 +76,12 @@ Las Fases 1 y 2 permiten:
 - Combinar de forma determinista métodos, pasarelas y tipos distintos.
 - Convertir las fechas a `Europe/Madrid` y ordenar el resultado de forma estable.
 - Mostrar un error seguro y accionable cuando faltan permisos para pedidos históricos.
-
-### Alcance pendiente
-
-La Fase 3 debe añadir reintentos por throttling, validación HTTP reforzada, protección contra inyección de fórmulas CSV, diagnósticos seguros y documentación de despliegue.
+- Rechazar métodos, tipos de contenido, tamaños y campos de petición no admitidos con códigos HTTP específicos.
+- Reintentar hasta tres veces throttling y fallos transitorios, respetando `Retry-After` y el coste GraphQL disponible.
+- Diferenciar de forma segura errores de configuración, autenticación, permisos, throttling e indisponibilidad.
+- Generar un CSV de solo cabeceras cuando no existen coincidencias e informar del resultado al navegador.
+- Registrar diagnósticos operativos sin secretos, variables GraphQL, datos personales o respuestas completas.
+- Recuperar la interfaz tras fallos y avisar cuando una exportación tarda más de lo habitual.
 
 ## 🏆 Beneficios
 
@@ -114,6 +118,7 @@ $rows = iterator_to_array($service->generate($store, $range), false);
 
 ## 🔗 Acuerdos relacionados
 
+- [Reglas contables del informe de pagos](../domain/payment-report-accounting.md)
 - [Integración con Shopify Admin GraphQL](../integrations/shopify-admin-graphql.md)
 - [Desarrollo local y verificación](../operations/local-development.md)
 - [Plan de implementación](../../.agents/plans/2026_09_18-shopify-payment-csv-export/2026_09_18-shopify-payment-csv-export-plan.md)

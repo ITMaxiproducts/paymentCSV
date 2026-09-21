@@ -35,7 +35,7 @@ final class StoreRegistry
         $value = getenv($name);
 
         if ($value === false || trim($value) === '') {
-            throw new InvalidArgumentException('La configuración de la tienda Shopify está incompleta.');
+            throw new StoreConfigurationException('La tienda seleccionada no está configurada en el servidor.');
         }
 
         return trim($value);
