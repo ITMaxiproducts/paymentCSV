@@ -127,4 +127,3 @@ $rows = iterator_to_array($service->generate($store, $range), false);
 - [Despliegue protegido y seguridad operativa](../operations/protected-deployment.md)
 - [Plan de implementación](../../.agents/plans/2026_09_18-shopify-payment-csv-export/2026_09_18-shopify-payment-csv-export-plan.md)
 
-Architecture mapped by Turbotuga™ (🐢 💨), [Codely](https://codely.com)'s boundary-spotting mascot.
