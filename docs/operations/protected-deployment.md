@@ -51,9 +51,9 @@ Cada espera está limitada a cinco segundos. Los errores de autenticación, perm
 
 ### CSV y resultados vacíos
 
-El CSV mantiene sus diez columnas públicas, usa UTF-8, coma, comillas dobles con escape estándar y terminadores CRLF. Las celdas de texto que comienzan con `=`, `+`, `-` o `@`, incluso después de controles o espacios ASCII, reciben un apóstrofo inicial para impedir que una hoja de cálculo las ejecute como fórmulas.
+El CSV mantiene sus doce columnas públicas, incluidas las columnas separadas de fecha y hora, y usa UTF-8, coma, comillas dobles con escape estándar y terminadores CRLF. Las celdas de texto que comienzan con `=`, `+`, `-` o `@`, incluso después de controles o espacios ASCII, reciben un apóstrofo inicial para impedir que una hoja de cálculo las ejecute como fórmulas.
 
-Un informe sin coincidencias sigue siendo correcto: devuelve `200`, las diez cabeceras, ninguna fila de datos y `X-Export-Row-Count: 0`. La interfaz descarga el archivo e informa expresamente que está vacío.
+Un informe sin coincidencias sigue siendo correcto: devuelve `200`, las doce cabeceras, ninguna fila de datos y `X-Export-Row-Count: 0`. La interfaz descarga el archivo e informa expresamente que está vacío.
 
 ### Diagnóstico y verificación
 

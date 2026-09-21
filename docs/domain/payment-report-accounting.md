@@ -47,10 +47,11 @@ La fecha del reembolso no tiene que pertenecer al intervalo. Un reembolso poster
 ### Valores agregados
 
 - `Fecha de la transacción` usa la fecha del primer pago válido en orden cronológico.
+- `Hora del pedido` y `Hora de la transacción` usan formato de 24 horas `HH:mm`.
 - `Estado del pago` usa el `displayFinancialStatus` actual del pedido, salvo `PARTIALLY_REFUNDED`, que se normaliza como `PAID` porque la fila representa el cobro neto conservado.
 - `Estado de la transacción` es `SUCCESS` y no se confunde con el estado financiero del pedido.
 - Métodos, pasarelas y tipos distintos se deduplican conservando el orden cronológico y se unen con ` + `.
-- Las fechas se expresan en ISO 8601 y se convierten a `Europe/Madrid`.
+- Los timestamps se convierten a `Europe/Madrid`; las fechas se expresan como `YYYY-MM-DD` y las horas como `HH:mm` en columnas separadas, sin mostrar el offset.
 - Las filas se ordenan por fecha del pedido ascendente y, como desempate, por referencia del pedido.
 
 ## 🏆 Beneficios

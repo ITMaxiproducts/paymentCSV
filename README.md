@@ -47,7 +47,9 @@ La convención completa de seguridad, respuestas, reintentos y diagnóstico est�
 
 Abre `index.php`, elige la tienda, selecciona un intervalo inclusivo de hasta 92 días y pulsa **Generar CSV**. El navegador descarga `pagos-shopify-{tienda}-{desde}-{hasta}.csv`.
 
-Cuando no existen pedidos coincidentes se descarga un CSV válido que contiene solo las diez cabeceras y la interfaz lo indica expresamente. Durante limitaciones temporales o fallos 408/429/5xx, el cliente de Shopify realiza hasta tres intentos con esperas acotadas.
+Cuando no existen pedidos coincidentes se descarga un CSV válido que contiene solo las doce cabeceras y la interfaz lo indica expresamente. Durante limitaciones temporales o fallos 408/429/5xx, el cliente de Shopify realiza hasta tres intentos con esperas acotadas.
+
+Las fechas y horas ocupan columnas separadas: `YYYY-MM-DD` para la fecha y `HH:mm` en formato de 24 horas para la hora. Ambos valores se convierten previamente a `Europe/Madrid`, sin incluir el desplazamiento `+01:00` o `+02:00` en el CSV.
 
 Los pedidos `PARTIALLY_REFUNDED` se incluyen con el reembolso descontado y se normalizan como `PAID`, porque conservan un cobro neto positivo. Los pedidos con estado financiero `REFUNDED` se excluyen del informe.
 

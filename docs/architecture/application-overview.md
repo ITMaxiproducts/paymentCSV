@@ -55,10 +55,10 @@ pagos-shopify-{shop}-{from}-{to}.csv
 ### Contrato CSV
 
 ```csv
-Fecha del pedido,Fecha de la transacción,Referencia del pedido,Estado del pago,Método de pago,Pasarela de pago,Tipo de transacción,Estado de la transacción,Importe de la transacción,Moneda
+Fecha del pedido,Hora del pedido,Fecha de la transacción,Hora de la transacción,Referencia del pedido,Estado del pago,Método de pago,Pasarela de pago,Tipo de transacción,Estado de la transacción,Importe de la transacción,Moneda
 ```
 
-El separador es una coma, los decimales usan punto, las fechas se convierten a `Europe/Madrid` y los importes se expresan en EUR con dos decimales.
+El separador es una coma, los decimales usan punto y los importes se expresan en EUR con dos decimales. Los timestamps se convierten a `Europe/Madrid` y se dividen en una columna de fecha `YYYY-MM-DD` y otra de hora `HH:mm`; el desplazamiento horario no se imprime.
 Los registros terminan en CRLF, los campos siguen el escape CSV estándar y las celdas de texto que podrían interpretarse como fórmulas se neutralizan con un apóstrofo inicial.
 
 ### Alcance implementado
@@ -77,6 +77,7 @@ Las Fases 1, 2 y 3 permiten:
 - Excluir pedidos cancelados y pedidos cuyo canal no sea Online Store.
 - Combinar de forma determinista métodos, pasarelas y tipos distintos.
 - Convertir las fechas a `Europe/Madrid` y ordenar el resultado de forma estable.
+- Separar fecha y hora del pedido y de la transacción, usando hora de 24 horas sin sufijo de zona horaria.
 - Mostrar un error seguro y accionable cuando faltan permisos para pedidos históricos.
 - Rechazar métodos, tipos de contenido, tamaños y campos de petición no admitidos con códigos HTTP específicos.
 - Reintentar hasta tres veces throttling y fallos transitorios, respetando `Retry-After` y el coste GraphQL disponible.

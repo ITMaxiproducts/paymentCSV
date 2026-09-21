@@ -121,8 +121,10 @@ final class PaymentReportRowFactory
         }
 
         return new PaymentReportRow(
-            $range->formatInTimezone($createdAt),
-            $range->formatInTimezone($processedAt),
+            $range->formatDateInTimezone($createdAt),
+            $range->formatTimeInTimezone($createdAt),
+            $range->formatDateInTimezone($processedAt),
+            $range->formatTimeInTimezone($processedAt),
             (string) ($order['name'] ?? ''),
             self::normalizedPaymentStatus($financialStatus),
             implode(self::COMBINED_VALUE_SEPARATOR, $methods),

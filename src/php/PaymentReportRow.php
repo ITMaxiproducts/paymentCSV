@@ -8,7 +8,9 @@ final class PaymentReportRow
 {
     public function __construct(
         public readonly string $orderDate,
+        public readonly string $orderTime,
         public readonly string $transactionDate,
+        public readonly string $transactionTime,
         public readonly string $orderName,
         public readonly string $paymentStatus,
         public readonly string $paymentMethod,
@@ -27,7 +29,9 @@ final class PaymentReportRow
     {
         return [
             $this->orderDate,
+            $this->orderTime,
             $this->transactionDate,
+            $this->transactionTime,
             $this->orderName,
             $this->paymentStatus,
             $this->paymentMethod,

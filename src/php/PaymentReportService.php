@@ -66,7 +66,8 @@ final class PaymentReportService
         } while ($cursor !== null);
 
         usort($rows, static function (PaymentReportRow $left, PaymentReportRow $right): int {
-            return [$left->orderDate, $left->orderName] <=> [$right->orderDate, $right->orderName];
+            return [$left->orderDate, $left->orderTime, $left->orderName]
+                <=> [$right->orderDate, $right->orderTime, $right->orderName];
         });
 
         foreach ($rows as $row) {

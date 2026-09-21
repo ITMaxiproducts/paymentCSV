@@ -302,8 +302,10 @@ $runner->test('aggregates captures and subtracts later successful refunds', stat
     assertSameValue('CAPTURE', $rows[0]->kind);
     assertSameValue('SUCCESS', $rows[0]->transactionStatus);
     assertSameValue('PAID', $rows[0]->paymentStatus);
-    assertSameValue('2025-09-01T23:30:00+02:00', $rows[0]->orderDate);
-    assertSameValue('2026-01-10T10:00:00+01:00', $rows[0]->transactionDate);
+    assertSameValue('2025-09-01', $rows[0]->orderDate);
+    assertSameValue('23:30', $rows[0]->orderTime);
+    assertSameValue('2026-01-10', $rows[0]->transactionDate);
+    assertSameValue('10:00', $rows[0]->transactionTime);
 });
 
 $runner->test('excludes fully refunded orders and combines distinct transaction values', static function (): void {
@@ -382,7 +384,9 @@ $runner->test('keeps the interface and CSV headers in Spanish', static function 
     assertContainsText('Consultando los pedidos en Shopify...', $javascript);
     assertSameValue([
         'Fecha del pedido',
+        'Hora del pedido',
         'Fecha de la transacción',
+        'Hora de la transacción',
         'Referencia del pedido',
         'Estado del pago',
         'Método de pago',
@@ -609,8 +613,10 @@ $runner->test('maps authentication, exhausted throttling, malformed JSON and Gra
 
 $runner->test('escapes CSV fields, neutralizes formulas and preserves UTF-8 with CRLF records', static function (): void {
     $row = new PaymentReportRow(
-        '2026-01-01T10:00:00+01:00',
-        '2026-01-01T10:05:00+01:00',
+        '2026-01-01',
+        '10:00',
+        '2026-01-01',
+        '10:05',
         '=HYPERLINK("https://example.invalid")',
         "PAGADO,\nRevisado",
         '+cmd',
@@ -634,12 +640,12 @@ $runner->test('escapes CSV fields, neutralizes formulas and preserves UTF-8 with
     fclose($stream);
 
     assertSameValue(CsvEncoder::HEADERS, $headers);
-    assertSameValue("'=HYPERLINK(\"https://example.invalid\")", $values[2] ?? null);
-    assertSameValue("PAGADO,\nRevisado", $values[3] ?? null);
-    assertSameValue("'+cmd", $values[4] ?? null);
-    assertSameValue('Pasarela "España"', $values[5] ?? null);
-    assertSameValue("'@CAPTURE", $values[6] ?? null);
-    assertSameValue("'-SUCCESS", $values[7] ?? null);
+    assertSameValue("'=HYPERLINK(\"https://example.invalid\")", $values[4] ?? null);
+    assertSameValue("PAGADO,\nRevisado", $values[5] ?? null);
+    assertSameValue("'+cmd", $values[6] ?? null);
+    assertSameValue('Pasarela "España"', $values[7] ?? null);
+    assertSameValue("'@CAPTURE", $values[8] ?? null);
+    assertSameValue("'-SUCCESS", $values[9] ?? null);
     assertContainsText("\r\n", $csv);
     assertContainsText('España', $csv);
 });

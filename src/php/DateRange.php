@@ -64,9 +64,17 @@ final class DateRange
 
     public function formatInTimezone(string $timestamp): string
     {
-        return (new DateTimeImmutable($timestamp))
-            ->setTimezone($this->timezone)
-            ->format(DateTimeInterface::ATOM);
+        return $this->inTimezone($timestamp)->format(DateTimeInterface::ATOM);
+    }
+
+    public function formatDateInTimezone(string $timestamp): string
+    {
+        return $this->inTimezone($timestamp)->format('Y-m-d');
+    }
+
+    public function formatTimeInTimezone(string $timestamp): string
+    {
+        return $this->inTimezone($timestamp)->format('H:i');
     }
 
     public function fromInputValue(): string
@@ -97,5 +105,10 @@ final class DateRange
         }
 
         return $date;
+    }
+
+    private function inTimezone(string $timestamp): DateTimeImmutable
+    {
+        return (new DateTimeImmutable($timestamp))->setTimezone($this->timezone);
     }
 }

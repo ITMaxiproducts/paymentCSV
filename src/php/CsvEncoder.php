@@ -9,14 +9,16 @@ use RuntimeException;
 final class CsvEncoder
 {
     /** @var list<int> */
-    private const TEXT_COLUMN_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    private const TEXT_COLUMN_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11];
 
     /**
      * @var list<string>
      */
     public const HEADERS = [
         'Fecha del pedido',
+        'Hora del pedido',
         'Fecha de la transacción',
+        'Hora de la transacción',
         'Referencia del pedido',
         'Estado del pago',
         'Método de pago',
