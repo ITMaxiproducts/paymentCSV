@@ -18,7 +18,13 @@ final class PaymentReportRowFactory
      */
     public function fromOrder(array $order, DateRange $range): ?PaymentReportRow
     {
-        if (($order['cancelledAt'] ?? null) !== null || strtolower((string) ($order['sourceName'] ?? '')) !== 'web') {
+        $financialStatus = strtoupper(trim((string) ($order['displayFinancialStatus'] ?? '')));
+
+        if (
+            ($order['cancelledAt'] ?? null) !== null
+            || strtolower((string) ($order['sourceName'] ?? '')) !== 'web'
+            || $financialStatus === 'REFUNDED'
+        ) {
             return null;
         }
 
@@ -118,7 +124,7 @@ final class PaymentReportRowFactory
             $range->formatInTimezone($createdAt),
             $range->formatInTimezone($processedAt),
             (string) ($order['name'] ?? ''),
-            (string) ($order['displayFinancialStatus'] ?? ''),
+            self::normalizedPaymentStatus($financialStatus),
             implode(self::COMBINED_VALUE_SEPARATOR, $methods),
             implode(self::COMBINED_VALUE_SEPARATOR, $gateways),
             implode(self::COMBINED_VALUE_SEPARATOR, $kinds),
@@ -214,5 +220,10 @@ final class PaymentReportRowFactory
     private static function nullableString(mixed $value): ?string
     {
         return is_string($value) ? $value : null;
+    }
+
+    private static function normalizedPaymentStatus(string $financialStatus): string
+    {
+        return $financialStatus === 'PARTIALLY_REFUNDED' ? 'PAID' : $financialStatus;
     }
 }

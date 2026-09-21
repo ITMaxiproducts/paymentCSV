@@ -49,6 +49,8 @@ Abre `index.php`, elige la tienda, selecciona un intervalo inclusivo de hasta 92
 
 Cuando no existen pedidos coincidentes se descarga un CSV válido que contiene solo las diez cabeceras y la interfaz lo indica expresamente. Durante limitaciones temporales o fallos 408/429/5xx, el cliente de Shopify realiza hasta tres intentos con esperas acotadas.
 
+Los pedidos `PARTIALLY_REFUNDED` se incluyen con el reembolso descontado y se normalizan como `PAID`, porque conservan un cobro neto positivo. Los pedidos con estado financiero `REFUNDED` se excluyen del informe.
+
 ## Verificación
 
 En la instalación Windows usada por el proyecto:

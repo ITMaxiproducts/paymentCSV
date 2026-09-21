@@ -72,7 +72,8 @@ Las Fases 1, 2 y 3 permiten:
 - Normalizar tarjeta, wallets basados en tarjeta y PayPal.
 - Agregar todas las ventas y capturas válidas en una sola fila por pedido.
 - Restar los reembolsos correctos vinculados, incluso si son posteriores al intervalo.
-- Mantener los pedidos totalmente reembolsados con importe neto `0.00 EUR`.
+- Excluir los pedidos cuyo estado financiero actual sea `REFUNDED`.
+- Normalizar los pedidos `PARTIALLY_REFUNDED` como `PAID` manteniendo el importe neto después del reembolso.
 - Excluir pedidos cancelados y pedidos cuyo canal no sea Online Store.
 - Combinar de forma determinista métodos, pasarelas y tipos distintos.
 - Convertir las fechas a `Europe/Madrid` y ordenar el resultado de forma estable.

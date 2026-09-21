@@ -292,7 +292,7 @@ $runner->test('aggregates captures and subtracts later successful refunds', stat
     $range = DateRange::fromInput('2026-01-01', '2026-01-31');
     $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
 
-    assertSameValue(['#2001', '#2002', '#2003'], array_map(
+    assertSameValue(['#2001', '#2003'], array_map(
         static fn ($row): string => $row->orderName,
         $rows,
     ));
@@ -301,23 +301,25 @@ $runner->test('aggregates captures and subtracts later successful refunds', stat
     assertSameValue('Shopify Payments', $rows[0]->gateway);
     assertSameValue('CAPTURE', $rows[0]->kind);
     assertSameValue('SUCCESS', $rows[0]->transactionStatus);
-    assertSameValue('PARTIALLY_REFUNDED', $rows[0]->paymentStatus);
+    assertSameValue('PAID', $rows[0]->paymentStatus);
     assertSameValue('2025-09-01T23:30:00+02:00', $rows[0]->orderDate);
     assertSameValue('2026-01-10T10:00:00+01:00', $rows[0]->transactionDate);
 });
 
-$runner->test('retains full refunds at zero and combines distinct transaction values', static function (): void {
+$runner->test('excludes fully refunded orders and combines distinct transaction values', static function (): void {
     $client = new ShopifyAdminClient(static fn (): array => fixture('orders-accounting'));
     $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
     $range = DateRange::fromInput('2026-01-01', '2026-01-31');
     $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
 
-    assertSameValue('0.00', $rows[1]->amount);
-    assertSameValue('REFUNDED', $rows[1]->paymentStatus);
-    assertSameValue('15.00', $rows[2]->amount);
-    assertSameValue('card', $rows[2]->paymentMethod);
-    assertSameValue('Stripe + Shopify Payments', $rows[2]->gateway);
-    assertSameValue('SALE + CAPTURE', $rows[2]->kind);
+    $names = array_map(static fn ($row): string => $row->orderName, $rows);
+
+    assertSameValue(false, in_array('#2002', $names, true));
+    assertSameValue(false, in_array('REFUNDED', array_column($rows, 'paymentStatus'), true));
+    assertSameValue('15.00', $rows[1]->amount);
+    assertSameValue('card', $rows[1]->paymentMethod);
+    assertSameValue('Stripe + Shopify Payments', $rows[1]->gateway);
+    assertSameValue('SALE + CAPTURE', $rows[1]->kind);
 });
 
 $runner->test('excludes cancelled, POS, test, failed, pending and unsupported payments', static function (): void {

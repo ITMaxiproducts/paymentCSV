@@ -10,6 +10,7 @@ Un pedido solo puede generar una fila cuando:
 
 - `cancelledAt` es `null`.
 - `sourceName` es `web`, que representa Online Store.
+- `displayFinancialStatus` no es `REFUNDED`.
 - Contiene al menos un pago válido dentro del intervalo seleccionado.
 
 ### Pagos válidos
@@ -41,12 +42,12 @@ Un reembolso se resta cuando:
 - Está denominado en EUR.
 - Su `parentTransaction.id` coincide con el identificador de uno de los pagos válidos.
 
-La fecha del reembolso no tiene que pertenecer al intervalo. Un reembolso posterior se resta para que el informe refleje el neto actual. Si los reembolsos igualan o superan los cobros, la fila se conserva con `0.00 EUR`.
+La fecha del reembolso no tiene que pertenecer al intervalo. Un reembolso posterior se resta para que el informe refleje el neto actual. Los pedidos cuyo estado financiero actual es `REFUNDED` se excluyen por completo del CSV; los `PARTIALLY_REFUNDED` permanecen con su importe neto y se presentan como `PAID`.
 
 ### Valores agregados
 
 - `Fecha de la transacción` usa la fecha del primer pago válido en orden cronológico.
-- `Estado del pago` usa el `displayFinancialStatus` actual del pedido.
+- `Estado del pago` usa el `displayFinancialStatus` actual del pedido, salvo `PARTIALLY_REFUNDED`, que se normaliza como `PAID` porque la fila representa el cobro neto conservado.
 - `Estado de la transacción` es `SUCCESS` y no se confunde con el estado financiero del pedido.
 - Métodos, pasarelas y tipos distintos se deduplican conservando el orden cronológico y se unen con ` + `.
 - Las fechas se expresan en ISO 8601 y se convierten a `Europe/Madrid`.
@@ -56,7 +57,7 @@ La fecha del reembolso no tiene que pertenecer al intervalo. Un reembolso poster
 
 - Evita duplicar pedidos cuando existen varias capturas.
 - Impide contar autorizaciones como dinero cobrado.
-- Refleja reembolsos parciales, totales y posteriores al periodo consultado.
+- Refleja reembolsos parciales y posteriores al periodo consultado sin conservar pedidos totalmente reembolsados.
 - Mantiene separados el estado financiero del pedido y el estado técnico de las transacciones.
 - Produce resultados deterministas y comparables entre exportaciones.
 - Evita errores de precisión al realizar los cálculos monetarios por céntimos.
@@ -73,13 +74,14 @@ REFUND SUCCESS 25.00 EUR, parentTransaction.id=payment-2, processedAt posterior
 Resultado: una fila con 75.00 EUR y la fecha de la primera captura.
 ```
 
-### ✅ Correcto: conservar un pedido totalmente reembolsado
+### ✅ Correcto: excluir un pedido totalmente reembolsado
 
 ```text
 SALE SUCCESS 20.00 EUR, id=payment-1
 REFUND SUCCESS 25.00 EUR, parentTransaction.id=payment-1
 
-Resultado: una fila con 0.00 EUR y el estado financiero actual del pedido.
+Estado financiero actual: REFUNDED
+Resultado: el pedido no genera ninguna fila.
 ```
 
 ### ❌ Incorrecto: elegir solo el primer cobro
