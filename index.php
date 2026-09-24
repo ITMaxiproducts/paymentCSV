@@ -42,6 +42,24 @@
                     </div>
                 </div>
 
+                <fieldset class="mb-4">
+                    <legend class="form-label">Tipo de pago</legend>
+                    <div class="d-flex flex-column flex-sm-row gap-2 gap-sm-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="payment-method-all" name="payment_method" value="all" required checked>
+                            <label class="form-check-label" for="payment-method-all">TODOS</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="payment-method-card" name="payment_method" value="card">
+                            <label class="form-check-label" for="payment-method-card">CARD</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="payment-method-paypal" name="payment_method" value="paypal">
+                            <label class="form-check-label" for="payment-method-paypal">PAYPAL</label>
+                        </div>
+                    </div>
+                </fieldset>
+
                 <div id="form-error" class="alert alert-danger d-none" role="alert"></div>
 
                 <button id="submit-button" class="btn btn-primary w-100" type="submit">

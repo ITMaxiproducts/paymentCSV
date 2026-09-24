@@ -17,14 +17,14 @@ La aplicación es una herramienta web pequeña y sin dependencias de runtime que
 
 ```text
 index.php
-  -> src/js/main.js valida tienda y fechas
+  -> src/js/main.js valida tienda, fechas y tipo de pago
   -> POST /export.php
   -> EnvironmentLoader carga .env sin sobrescribir el entorno del proceso
   -> ExportRequestValidator valida transporte y forma de la petición
   -> ExportController valida y coordina la petición
   -> StoreRegistry carga la tienda desde variables de entorno
   -> PaymentReportService pagina pedidos desde Shopify
-  -> PaymentReportRowFactory selecciona la transacción válida
+  -> PaymentReportRowFactory selecciona pagos válidos que coinciden con el filtro
   -> CsvEncoder genera el contenido
   -> CsvResponse devuelve la descarga
 ```
@@ -44,6 +44,7 @@ Campos:
 shop: ohyeah | horeca
 date_from: YYYY-MM-DD
 date_to: YYYY-MM-DD
+payment_method: all | card | paypal (opcional; por defecto all)
 ```
 
 Una respuesta correcta utiliza `text/csv; charset=UTF-8` y un nombre con el formato:
@@ -67,9 +68,11 @@ Las Fases 1, 2 y 3 permiten:
 
 - Elegir OHYEAH o HORECA.
 - Seleccionar un intervalo inclusivo de hasta 92 días.
+- Elegir TODOS, CARD o PAYPAL, con TODOS como opción predeterminada.
 - Consultar pedidos con paginación por cursor.
 - Filtrar transacciones `SALE` o `CAPTURE`, con estado `SUCCESS` y no marcadas como prueba.
 - Normalizar tarjeta, wallets basados en tarjeta y PayPal.
+- Aplicar localmente el filtro de método normalizado, sin cambiar la consulta GraphQL ni sus permisos.
 - Agregar todas las ventas y capturas válidas en una sola fila por pedido.
 - Restar los reembolsos correctos vinculados, incluso si son posteriores al intervalo.
 - Excluir los pedidos cuyo estado financiero actual sea `REFUNDED`.
@@ -102,7 +105,8 @@ Las Fases 1, 2 y 3 permiten:
 ```php
 $store = StoreRegistry::get($storeKey);
 $range = DateRange::fromInput($from, $to);
-$rows = iterator_to_array($service->generate($store, $range), false);
+$filter = PaymentMethodFilter::fromInput($paymentMethod);
+$rows = iterator_to_array($service->generate($store, $range, $filter), false);
 ```
 
 ### ❌ Incorrecto: concentrar credenciales, GraphQL y CSV en la página HTML

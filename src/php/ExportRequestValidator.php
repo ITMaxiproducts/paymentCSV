@@ -11,7 +11,12 @@ final class ExportRequestValidator
     /**
      * @var list<string>
      */
-    private const FIELDS = ['shop', 'date_from', 'date_to'];
+    private const FIELDS = ['shop', 'date_from', 'date_to', 'payment_method'];
+
+    /**
+     * @var list<string>
+     */
+    private const REQUIRED_FIELDS = ['shop', 'date_from', 'date_to'];
 
     /**
      * @param array<string, mixed> $server
@@ -56,7 +61,7 @@ final class ExportRequestValidator
 
         $validated = [];
 
-        foreach (self::FIELDS as $field) {
+        foreach (self::REQUIRED_FIELDS as $field) {
             $value = $input[$field] ?? null;
 
             if (!is_string($value) || strlen($value) > 32) {
@@ -64,6 +69,19 @@ final class ExportRequestValidator
             }
 
             $validated[$field] = $value;
+        }
+
+        $hasPaymentMethod = array_key_exists('payment_method', $input);
+        $paymentMethod = $hasPaymentMethod ? $input['payment_method'] : null;
+
+        if ($hasPaymentMethod && (!is_string($paymentMethod) || strlen($paymentMethod) > 32)) {
+            throw new RequestValidationException(422, 'La petición de exportación no es válida.');
+        }
+
+        try {
+            $validated['payment_method'] = PaymentMethodFilter::fromInput($paymentMethod)->value();
+        } catch (\InvalidArgumentException $exception) {
+            throw new RequestValidationException(422, $exception->getMessage());
         }
 
         return $validated;

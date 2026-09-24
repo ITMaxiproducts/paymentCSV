@@ -19,7 +19,7 @@ final class PaymentReportService
     /**
      * @return iterable<PaymentReportRow>
      */
-    public function generate(StoreConfig $store, DateRange $range): iterable
+    public function generate(StoreConfig $store, DateRange $range, PaymentMethodFilter $filter): iterable
     {
         $cursor = null;
         $rows = [];
@@ -47,7 +47,7 @@ final class PaymentReportService
                     continue;
                 }
 
-                $row = $this->rowFactory->fromOrder($order, $range);
+                $row = $this->rowFactory->fromOrder($order, $range, $filter);
 
                 if ($row !== null) {
                     $rows[] = $row;

@@ -16,7 +16,11 @@ final class PaymentReportRowFactory
     /**
      * @param array<string, mixed> $order
      */
-    public function fromOrder(array $order, DateRange $range): ?PaymentReportRow
+    public function fromOrder(
+        array $order,
+        DateRange $range,
+        PaymentMethodFilter $filter,
+    ): ?PaymentReportRow
     {
         $financialStatus = strtoupper(trim((string) ($order['displayFinancialStatus'] ?? '')));
 
@@ -60,7 +64,7 @@ final class PaymentReportRowFactory
             $amount = $this->eurAmountInCents($transaction);
             $id = self::nullableString($transaction['id'] ?? null);
 
-            if ($method === null || $amount === null || $id === null || $id === '') {
+            if (!$filter->accepts($method) || $amount === null || $id === null || $id === '') {
                 continue;
             }
 

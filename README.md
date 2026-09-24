@@ -47,7 +47,9 @@ La convención completa de seguridad, respuestas, reintentos y diagnóstico est�
 
 ## Uso
 
-Abre `index.php`, elige la tienda, selecciona un intervalo inclusivo de hasta 92 días y pulsa **Generar CSV**. El navegador descarga `pagos-shopify-{tienda}-{desde}-{hasta}.csv`.
+Abre `index.php`, elige la tienda, selecciona un intervalo inclusivo de hasta 92 días y escoge el tipo de pago: **TODOS**, **CARD** o **PAYPAL**. **TODOS** está seleccionado por defecto y mantiene el comportamiento original. Después, pulsa **Generar CSV**; el navegador descarga `pagos-shopify-{tienda}-{desde}-{hasta}.csv`.
+
+El formulario envía `payment_method` con uno de los valores `all`, `card` o `paypal`. Por compatibilidad con clientes anteriores, el endpoint interpreta un campo ausente como `all`. El filtro se aplica localmente después de normalizar cada pedido como CARD o PAYPAL, por lo que no modifica la consulta GraphQL, los permisos de Shopify, las columnas del CSV ni el nombre del archivo.
 
 Cuando no existen pedidos coincidentes se descarga un CSV válido que contiene solo las doce cabeceras y la interfaz lo indica expresamente. Durante limitaciones temporales o fallos 408/429/5xx, el cliente de Shopify realiza hasta tres intentos con esperas acotadas.
 
@@ -85,6 +87,7 @@ Comprueba `http://127.0.0.1:8765/` y estos casos:
 - Un `POST` que no sea `multipart/form-data` devuelve `415`.
 - Un formulario válido sin configuración devuelve `503` sin nombres de variables, tokens, rutas ni trazas.
 - Con una tienda de prueba configurada, una exportación válida devuelve `200`, `text/csv`, el nombre estable y `X-Export-Row-Count`.
+- Las opciones **TODOS**, **CARD** y **PAYPAL** descargan únicamente los pedidos esperados; una selección sin coincidencias devuelve un CSV solo con cabeceras.
 
 Los fixtures automatizados cubren reintentos, errores, CSV vacío, escape, UTF-8 y protección frente a fórmulas. La autenticación real, los permisos, la conectividad saliente y la descarga contra Shopify solo pueden comprobarse en el entorno protegido con credenciales de prueba.
 

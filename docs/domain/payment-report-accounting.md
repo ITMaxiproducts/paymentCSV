@@ -13,6 +13,8 @@ Un pedido solo puede generar una fila cuando:
 - `displayFinancialStatus` no es `REFUNDED`.
 - Contiene al menos un pago válido dentro del intervalo seleccionado.
 
+Cada pedido admitido pertenece a una sola categoría de pago normalizada, `card` o `paypal`; los pedidos con métodos mixtos quedan fuera del dominio soportado. El usuario puede solicitar `all`, `card` o `paypal`. `all` conserva el comportamiento original, mientras que los otros valores incluyen el pedido completo solo cuando su categoría coincide.
+
 ### Pagos válidos
 
 Una transacción cuenta como pago cuando cumple todas estas condiciones:
@@ -22,9 +24,12 @@ Una transacción cuenta como pago cuando cumple todas estas condiciones:
 - `status` es `SUCCESS`.
 - `processedAt` pertenece al intervalo inclusivo solicitado, interpretado en `Europe/Madrid`.
 - El método puede normalizarse como `card` o `paypal`.
+- El método normalizado coincide con el filtro solicitado, salvo cuando el filtro es `all`.
 - `amountSet.shopMoney.currencyCode` es `EUR`.
 
 Las transacciones `AUTHORIZATION` no suman importe. En un flujo de autorización y captura, solo las capturas satisfactorias que cumplen las reglas anteriores forman parte del total.
+
+El filtro se aplica en PHP después de normalizar el método. CARD incluye tarjetas y wallets basados en tarjeta reconocidos por `PaymentMethodNormalizer`; PAYPAL incluye transacciones normalizadas como PayPal. Shopify recibe la misma consulta para las tres opciones.
 
 ### Reembolsos e importe neto
 
@@ -57,6 +62,7 @@ La fecha del reembolso no tiene que pertenecer al intervalo. Un reembolso poster
 ## 🏆 Beneficios
 
 - Evita duplicar pedidos cuando existen varias capturas.
+- Permite obtener todos los pedidos o solo la categoría CARD o PAYPAL sin alterar la contabilidad del pedido.
 - Impide contar autorizaciones como dinero cobrado.
 - Refleja reembolsos parciales y posteriores al periodo consultado sin conservar pedidos totalmente reembolsados.
 - Mantiene separados el estado financiero del pedido y el estado técnico de las transacciones.

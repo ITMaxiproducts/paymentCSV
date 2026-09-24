@@ -22,8 +22,10 @@ final class ExportController
         $storeKey = is_string($input['shop'] ?? null) ? $input['shop'] : '';
         $from = is_string($input['date_from'] ?? null) ? $input['date_from'] : '';
         $to = is_string($input['date_to'] ?? null) ? $input['date_to'] : '';
+        $paymentMethod = is_string($input['payment_method'] ?? null) ? $input['payment_method'] : null;
         $store = StoreRegistry::get($storeKey);
         $range = DateRange::fromInput($from, $to);
+        $filter = PaymentMethodFilter::fromInput($paymentMethod);
         $client = $this->clientFactory !== null
             ? ($this->clientFactory)($store)
             : new ShopifyAdminClient();
@@ -33,7 +35,7 @@ final class ExportController
         }
 
         $service = new PaymentReportService($client);
-        $rows = iterator_to_array($service->generate($store, $range), false);
+        $rows = iterator_to_array($service->generate($store, $range, $filter), false);
 
         return new ExportResult(
             $rows,

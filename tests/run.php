@@ -7,6 +7,7 @@ use PaymentCsv\DateRange;
 use PaymentCsv\EnvironmentLoader;
 use PaymentCsv\ExportController;
 use PaymentCsv\ExportRequestValidator;
+use PaymentCsv\PaymentMethodFilter;
 use PaymentCsv\PaymentMethodNormalizer;
 use PaymentCsv\PaymentReportOrders;
 use PaymentCsv\PaymentReportRow;
@@ -261,6 +262,21 @@ $runner->test('normalizes card wallets and PayPal', static function (): void {
     assertSameValue(null, $normalizer->normalize('bank transfer', 'manual'));
 });
 
+$runner->test('accepts only the supported payment method filters', static function (): void {
+    assertSameValue('all', PaymentMethodFilter::fromInput(null)->value());
+    assertSameValue('all', PaymentMethodFilter::fromInput('all')->value());
+    assertSameValue('card', PaymentMethodFilter::fromInput('card')->value());
+    assertSameValue('paypal', PaymentMethodFilter::fromInput('paypal')->value());
+    assertSameValue(true, PaymentMethodFilter::fromInput('all')->accepts('card'));
+    assertSameValue(true, PaymentMethodFilter::fromInput('all')->accepts('paypal'));
+    assertSameValue(false, PaymentMethodFilter::fromInput('card')->accepts('paypal'));
+    assertSameValue(false, PaymentMethodFilter::fromInput('paypal')->accepts(null));
+    assertThrows(
+        static fn (): PaymentMethodFilter => PaymentMethodFilter::fromInput('cash'),
+        InvalidArgumentException::class,
+    );
+});
+
 $runner->test('paginates Shopify orders and emits qualifying rows', static function (): void {
     $calls = [];
     $client = new ShopifyAdminClient(static function (StoreConfig $store, array $payload) use (&$calls): array {
@@ -272,7 +288,11 @@ $runner->test('paginates Shopify orders and emits qualifying rows', static funct
     });
     $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
     $range = DateRange::fromInput('2026-01-01', '2026-01-31');
-    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+    $rows = iterator_to_array((new PaymentReportService($client))->generate(
+        $store,
+        $range,
+        PaymentMethodFilter::fromInput('all'),
+    ), false);
 
     assertSameValue(2, count($calls));
     assertSameValue(null, $calls[0]['after']);
@@ -286,11 +306,64 @@ $runner->test('paginates Shopify orders and emits qualifying rows', static funct
     assertSameValue('paypal', $rows[1]->paymentMethod);
 });
 
+$runner->test('filters complete CARD and PAYPAL orders and keeps linked refunds', static function (): void {
+    $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
+    $range = DateRange::fromInput('2026-01-01', '2026-01-31');
+    $paypalFixture = fixture('orders-page-2');
+    $paypalFixture['data']['orders']['nodes'][0]['displayFinancialStatus'] = 'PARTIALLY_REFUNDED';
+    $paypalFixture['data']['orders']['nodes'][0]['transactions'][] = [
+        'id' => 'gid://shopify/OrderTransaction/602',
+        'processedAt' => '2026-02-01T10:05:00Z',
+        'gateway' => 'paypal_express',
+        'formattedGateway' => 'PayPal Express Checkout',
+        'kind' => 'REFUND',
+        'status' => 'SUCCESS',
+        'test' => false,
+        'amountSet' => [
+            'shopMoney' => [
+                'amount' => '5.00',
+                'currencyCode' => 'EUR',
+            ],
+        ],
+        'paymentDetails' => null,
+        'parentTransaction' => [
+            'id' => 'gid://shopify/OrderTransaction/502',
+        ],
+    ];
+    $rowsFor = static function (array $fixtureData, string $filter) use ($store, $range): array {
+        $client = new ShopifyAdminClient(static fn (): array => $fixtureData);
+
+        return iterator_to_array((new PaymentReportService($client))->generate(
+            $store,
+            $range,
+            PaymentMethodFilter::fromInput($filter),
+        ), false);
+    };
+
+    $cardRows = $rowsFor(singlePageFixture(), 'card');
+    $paypalRows = $rowsFor($paypalFixture, 'paypal');
+    $noRows = $rowsFor(singlePageFixture(), 'paypal');
+
+    assertSameValue(1, count($cardRows));
+    assertSameValue('card', $cardRows[0]->paymentMethod);
+    assertSameValue('49.95', $cardRows[0]->amount);
+    assertSameValue(1, count($paypalRows));
+    assertSameValue('paypal', $paypalRows[0]->paymentMethod);
+    assertSameValue('20.00', $paypalRows[0]->amount);
+    assertSameValue('PAID', $paypalRows[0]->paymentStatus);
+    assertSameValue([], $noRows);
+    assertSameValue(1, substr_count(CsvEncoder::encode($noRows), "\r\n"));
+});
+
 $runner->test('aggregates captures and subtracts later successful refunds', static function (): void {
     $client = new ShopifyAdminClient(static fn (): array => fixture('orders-accounting'));
     $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
     $range = DateRange::fromInput('2026-01-01', '2026-01-31');
-    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+    $rows = iterator_to_array((new PaymentReportService($client))->generate(
+        $store,
+        $range,
+        PaymentMethodFilter::fromInput('all'),
+    ), false);
 
     assertSameValue(['#2001', '#2003'], array_map(
         static fn ($row): string => $row->orderName,
@@ -312,7 +385,11 @@ $runner->test('excludes fully refunded orders and combines distinct transaction 
     $client = new ShopifyAdminClient(static fn (): array => fixture('orders-accounting'));
     $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
     $range = DateRange::fromInput('2026-01-01', '2026-01-31');
-    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+    $rows = iterator_to_array((new PaymentReportService($client))->generate(
+        $store,
+        $range,
+        PaymentMethodFilter::fromInput('all'),
+    ), false);
 
     $names = array_map(static fn ($row): string => $row->orderName, $rows);
 
@@ -328,7 +405,11 @@ $runner->test('excludes cancelled, POS, test, failed, pending and unsupported pa
     $client = new ShopifyAdminClient(static fn (): array => fixture('orders-accounting'));
     $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
     $range = DateRange::fromInput('2026-01-01', '2026-01-31');
-    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+    $rows = iterator_to_array((new PaymentReportService($client))->generate(
+        $store,
+        $range,
+        PaymentMethodFilter::fromInput('all'),
+    ), false);
     $names = array_map(static fn ($row): string => $row->orderName, $rows);
 
     assertSameValue(false, in_array('#3001', $names, true));
@@ -362,7 +443,11 @@ $runner->test('writes the exact CSV schema and international amounts', static fu
     $client = new ShopifyAdminClient(static fn (): array => singlePageFixture());
     $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
     $range = DateRange::fromInput('2026-01-01', '2026-01-31');
-    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+    $rows = iterator_to_array((new PaymentReportService($client))->generate(
+        $store,
+        $range,
+        PaymentMethodFilter::fromInput('all'),
+    ), false);
     $csv = CsvEncoder::encode($rows);
     $lines = preg_split('/\r\n|\n|\r/', trim($csv));
 
@@ -380,6 +465,14 @@ $runner->test('keeps the interface and CSV headers in Spanish', static function 
 
     assertContainsText('<html lang="es">', $html);
     assertContainsText('Tienda Shopify', $html);
+    assertContainsText('<fieldset class="mb-4">', $html);
+    assertContainsText('<legend class="form-label">Tipo de pago</legend>', $html);
+    assertContainsText('name="payment_method" value="all" required checked', $html);
+    assertContainsText('name="payment_method" value="card"', $html);
+    assertContainsText('name="payment_method" value="paypal"', $html);
+    assertContainsText('for="payment-method-all">TODOS</label>', $html);
+    assertContainsText('for="payment-method-card">CARD</label>', $html);
+    assertContainsText('for="payment-method-paypal">PAYPAL</label>', $html);
     assertContainsText('Generar CSV', $html);
     assertContainsText('Consultando los pedidos en Shopify...', $javascript);
     assertSameValue([
@@ -398,19 +491,28 @@ $runner->test('keeps the interface and CSV headers in Spanish', static function 
     ], CsvEncoder::HEADERS);
 });
 
-$runner->test('builds a successful export result with a deterministic filename', static function (): void {
+$runner->test('propagates the payment filter and keeps the deterministic filename', static function (): void {
     configureTestStore();
     $controller = new ExportController(static function (): ShopifyAdminClient {
         return new ShopifyAdminClient(static fn (): array => singlePageFixture());
     });
-    $result = $controller->export([
+    $cardResult = $controller->export([
         'shop' => 'ohyeah',
         'date_from' => '2026-01-01',
         'date_to' => '2026-01-31',
+        'payment_method' => 'card',
+    ]);
+    $paypalResult = $controller->export([
+        'shop' => 'ohyeah',
+        'date_from' => '2026-01-01',
+        'date_to' => '2026-01-31',
+        'payment_method' => 'paypal',
     ]);
 
-    assertSameValue('pagos-shopify-ohyeah-2026-01-01-2026-01-31.csv', $result->filename);
-    assertSameValue(1, count($result->rows));
+    assertSameValue('pagos-shopify-ohyeah-2026-01-01-2026-01-31.csv', $cardResult->filename);
+    assertSameValue('pagos-shopify-ohyeah-2026-01-01-2026-01-31.csv', $paypalResult->filename);
+    assertSameValue(1, count($cardResult->rows));
+    assertSameValue(0, count($paypalResult->rows));
 });
 
 $runner->test('validates HTTP method, multipart content type, request size and fields', static function (): void {
@@ -419,13 +521,24 @@ $runner->test('validates HTTP method, multipart content type, request size and f
         'CONTENT_TYPE' => 'multipart/form-data; boundary=payment-csv',
         'CONTENT_LENGTH' => '256',
     ];
-    $validInput = [
+    $legacyInput = [
         'shop' => 'ohyeah',
         'date_from' => '2026-01-01',
         'date_to' => '2026-01-31',
     ];
+    $validInput = $legacyInput + ['payment_method' => 'all'];
 
     assertSameValue($validInput, ExportRequestValidator::validate($validServer, $validInput));
+    assertSameValue($validInput, ExportRequestValidator::validate($validServer, $legacyInput));
+
+    foreach (['all', 'card', 'paypal'] as $paymentMethod) {
+        $validated = ExportRequestValidator::validate(
+            $validServer,
+            $legacyInput + ['payment_method' => $paymentMethod],
+        );
+        assertSameValue($paymentMethod, $validated['payment_method']);
+    }
+
     assertRequestStatus(405, ['REQUEST_METHOD' => 'GET'], []);
     assertRequestStatus(415, [
         'REQUEST_METHOD' => 'POST',
@@ -437,6 +550,9 @@ $runner->test('validates HTTP method, multipart content type, request size and f
         'CONTENT_LENGTH' => (string) (ExportRequestValidator::MAX_BODY_BYTES + 1),
     ], $validInput);
     assertRequestStatus(422, $validServer, $validInput + ['unexpected' => 'value']);
+    assertRequestStatus(422, $validServer, $legacyInput + ['payment_method' => 'cash']);
+    assertRequestStatus(422, $validServer, $legacyInput + ['payment_method' => ['card']]);
+    assertRequestStatus(422, $validServer, $legacyInput + ['payment_method' => null]);
     assertRequestStatus(422, $validServer, [
         'shop' => ['ohyeah'],
         'date_from' => '2026-01-01',
@@ -661,7 +777,11 @@ $runner->test('creates a header-only CSV and exposes clear empty-report UI behav
     ]);
     $store = new StoreConfig('ohyeah', 'ohyeah-test.myshopify.com', 'test-token', '2026-07');
     $range = DateRange::fromInput('2026-01-01', '2026-01-31');
-    $rows = iterator_to_array((new PaymentReportService($client))->generate($store, $range), false);
+    $rows = iterator_to_array((new PaymentReportService($client))->generate(
+        $store,
+        $range,
+        PaymentMethodFilter::fromInput('all'),
+    ), false);
     $csv = CsvEncoder::encode($rows);
     $javascript = file_get_contents(__DIR__ . '/../src/js/main.js');
     $response = file_get_contents(__DIR__ . '/../src/php/CsvResponse.php');

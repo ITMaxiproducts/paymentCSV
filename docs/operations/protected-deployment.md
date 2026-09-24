@@ -14,11 +14,12 @@ El bootstrap carga el `.env` de la raíz cuando existe y pesa como máximo 64 Ki
 
 - `Content-Type: multipart/form-data`.
 - Un cuerpo de hasta 16 KiB.
-- Los campos escalares `shop`, `date_from` y `date_to`.
+- Los campos escalares `shop`, `date_from`, `date_to` y el campo opcional `payment_method`.
 - Las tiendas `ohyeah` y `horeca`.
 - Fechas de calendario `YYYY-MM-DD` en orden y con un máximo de 92 días inclusivos.
+- Los filtros de pago `all`, `card` y `paypal`; la ausencia de `payment_method` equivale a `all` por compatibilidad.
 
-Los métodos, tipos de contenido, tamaños, campos, tiendas o fechas no admitidos se rechazan antes de consultar Shopify.
+Los métodos HTTP, tipos de contenido, tamaños, campos, tiendas, fechas o filtros de pago no admitidos se rechazan antes de consultar Shopify.
 
 ### Estados y mensajes seguros
 
@@ -53,7 +54,7 @@ Cada espera está limitada a cinco segundos. Los errores de autenticación, perm
 
 El CSV mantiene sus doce columnas públicas, incluidas las columnas separadas de fecha y hora, y usa UTF-8, coma, comillas dobles con escape estándar y terminadores CRLF. Las celdas de texto que comienzan con `=`, `+`, `-` o `@`, incluso después de controles o espacios ASCII, reciben un apóstrofo inicial para impedir que una hoja de cálculo las ejecute como fórmulas.
 
-Un informe sin coincidencias sigue siendo correcto: devuelve `200`, las doce cabeceras, ninguna fila de datos y `X-Export-Row-Count: 0`. La interfaz descarga el archivo e informa expresamente que está vacío.
+Un informe sin coincidencias, también cuando CARD o PAYPAL no encuentra pedidos, sigue siendo correcto: devuelve `200`, las doce cabeceras, ninguna fila de datos y `X-Export-Row-Count: 0`. La interfaz descarga el archivo e informa expresamente que está vacío.
 
 ### Diagnóstico y verificación
 

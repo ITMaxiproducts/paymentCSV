@@ -89,7 +89,7 @@ La guía completa y la lista de smoke test están en [`README.md`](../../README.
 
 ### Pruebas
 
-La suite cubre intervalos de fechas, límite de 92 días, tiendas permitidas, normalización de métodos, paginación, históricos, agregación de cobros, reembolsos parciales y totales, filtros de canal y estado, permisos históricos, orden estable, contrato CSV, interfaz y creación del resultado de exportación. Las respuestas de Shopify proceden de fixtures y no requieren red ni credenciales reales.
+La suite cubre intervalos de fechas, límite de 92 días, tiendas permitidas, normalización de métodos, selección TODOS/CARD/PAYPAL, compatibilidad del valor predeterminado, paginación, históricos, agregación de cobros, reembolsos parciales y totales, filtros de canal y estado, permisos históricos, orden estable, contrato CSV, interfaz y creación del resultado de exportación. Las respuestas de Shopify proceden de fixtures y no requieren red ni credenciales reales.
 
 ### Diagnóstico básico
 
@@ -103,6 +103,7 @@ La suite cubre intervalos de fechas, límite de 92 días, tiendas permitidas, no
 - Respuesta `415`: enviar el formulario como `multipart/form-data`.
 - Respuesta `503` por throttling: esperar y reintentar después de `Retry-After`; el servidor ya ha agotado sus reintentos acotados.
 - CSV vacío: es un resultado válido con solo cabeceras; comprobar filtros, tienda y periodo.
+- Filtro de pago inesperado: enviar únicamente `all`, `card` o `paypal`; una petición antigua sin el campo usa `all`.
 
 ## 🏆 Beneficios
 

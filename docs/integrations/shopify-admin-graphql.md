@@ -2,7 +2,7 @@
 
 ## 💡 Convención
 
-Todas las consultas a Shopify se realizan desde PHP mediante Admin GraphQL. El navegador solo envía la tienda y el intervalo al endpoint local; nunca recibe el dominio privado de configuración ni el token de acceso.
+Todas las consultas a Shopify se realizan desde PHP mediante Admin GraphQL. El navegador solo envía la tienda, el intervalo y el filtro de tipo de pago al endpoint local; nunca recibe el dominio privado de configuración ni el token de acceso.
 
 ### Configuración de tiendas
 
@@ -52,6 +52,8 @@ created_at:<=final_del_intervalo updated_at:>=inicio_del_intervalo status:any
 ```
 
 Después, PHP aplica el intervalo exacto a `OrderTransaction.processedAt` en la zona `Europe/Madrid`.
+
+El selector `all|card|paypal` también se aplica en PHP sobre el método ya normalizado. No cambia la operación GraphQL, sus variables, la paginación ni los permisos requeridos.
 
 Una transacción de pago es válida cuando:
 
