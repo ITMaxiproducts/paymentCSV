@@ -2,7 +2,7 @@
 
 Aplicación PHP sin dependencias de runtime que descarga un CSV de pagos de Shopify para las tiendas OHYEAH y HORECA. El informe usa una fila por pedido, filtra por la fecha de la transacción en `Europe/Madrid` y aplica las reglas de cobros y reembolsos documentadas en [`docs/domain/payment-report-accounting.md`](docs/domain/payment-report-accounting.md).
 
-Versión estable actual: `v1.0.0`. Consulta las [notas de versión](CHANGELOG.md).
+Versión estable actual: `v1.1.0`. Consulta las [notas de versión](CHANGELOG.md).
 
 ## Requisitos
 
