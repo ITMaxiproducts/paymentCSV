@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de Shopify Payment CSV se documentan en este archivo.
 
+## [Sin publicar]
+
+### Añadido
+
+- Admisión de pedidos con origen `shopify_draft_order`, con los mismos filtros contables y fechas UTC que los pedidos `web`.
+
+### Corregido
+
+- El intervalo y las fechas y horas del CSV usan UTC para alinear los cobros con su día en las liquidaciones de Shopify Payments. Los pagos cercanos a medianoche ya no se desplazan al día siguiente por la conversión a Madrid.
+- Los días incluyen las fracciones del último segundo y excluyen la medianoche siguiente para evitar omisiones o duplicados entre informes consecutivos.
+- El formulario y la documentación indican la zona del informe. Se mantienen las doce columnas y los filtros contables existentes.
+
 ## [1.1.0] - 2026-09-24
 
 Nueva selección de tipo de pago para generar informes más específicos sin modificar el formato estable del CSV.

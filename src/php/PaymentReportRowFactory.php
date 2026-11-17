@@ -26,7 +26,7 @@ final class PaymentReportRowFactory
 
         if (
             ($order['cancelledAt'] ?? null) !== null
-            || strtolower((string) ($order['sourceName'] ?? '')) !== 'web'
+            || !in_array(strtolower((string) ($order['sourceName'] ?? '')), ['web', 'shopify_draft_order'], true)
             || $financialStatus === 'REFUNDED'
         ) {
             return null;

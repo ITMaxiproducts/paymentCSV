@@ -23,9 +23,10 @@ final class DateRange
 
     public static function fromInput(string $from, string $to): self
     {
-        $timezone = new DateTimeZone('Europe/Madrid');
+        // Match the UTC capture dates shown in Shopify Payments payout details.
+        $timezone = new DateTimeZone('UTC');
         $start = self::parseDate($from, $timezone)->setTime(0, 0, 0);
-        $end = self::parseDate($to, $timezone)->setTime(23, 59, 59);
+        $end = self::parseDate($to, $timezone)->setTime(23, 59, 59, 999999);
 
         if ($end < $start) {
             throw new InvalidArgumentException('La fecha final debe ser igual o posterior a la fecha inicial.');
@@ -43,7 +44,7 @@ final class DateRange
     public function contains(string $timestamp): bool
     {
         try {
-            $date = new DateTimeImmutable($timestamp);
+            $date = new DateTimeImmutable($timestamp, $this->timezone);
         } catch (Throwable) {
             return false;
         }
@@ -57,9 +58,10 @@ final class DateRange
     {
         $utc = new DateTimeZone('UTC');
         $start = $this->start->setTimezone($utc)->format('Y-m-d\TH:i:s\Z');
-        $end = $this->end->setTimezone($utc)->format('Y-m-d\TH:i:s\Z');
+        $endExclusive = $this->end->modify('+1 day')->setTime(0, 0, 0)
+            ->setTimezone($utc)->format('Y-m-d\TH:i:s\Z');
 
-        return sprintf('created_at:<=%s updated_at:>=%s status:any', $end, $start);
+        return sprintf('created_at:<%s updated_at:>=%s status:any', $endExclusive, $start);
     }
 
     public function formatInTimezone(string $timestamp): string
@@ -109,6 +111,6 @@ final class DateRange
 
     private function inTimezone(string $timestamp): DateTimeImmutable
     {
-        return (new DateTimeImmutable($timestamp))->setTimezone($this->timezone);
+        return (new DateTimeImmutable($timestamp, $this->timezone))->setTimezone($this->timezone);
     }
 }

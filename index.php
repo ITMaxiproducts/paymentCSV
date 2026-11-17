@@ -29,6 +29,8 @@
                     <div class="invalid-feedback">Selecciona una tienda Shopify.</div>
                 </div>
 
+                <p class="text-body-secondary small">Las fechas y horas del informe usan UTC, como los cobros en las liquidaciones de Shopify Payments.</p>
+
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label for="date-from" class="form-label">Fecha desde</label>

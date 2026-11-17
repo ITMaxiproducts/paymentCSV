@@ -175,6 +175,32 @@ $runner->test('rejects reversed and invalid calendar dates', static function ():
     );
 });
 
+$runner->test('uses complete UTC days across winter, summer and daylight saving changes', static function (): void {
+    foreach (['2026-01-15', '2026-07-15', '2026-03-29', '2026-10-25'] as $day) {
+        $range = DateRange::fromInput($day, $day);
+        $midnight = new DateTimeImmutable($day . 'T00:00:00Z');
+        $nextDay = $midnight->modify('+1 day')->format('Y-m-d');
+
+        assertSameValue(true, $range->contains($day . 'T00:00:00Z'));
+        assertSameValue(true, $range->contains($day . 'T23:59:59.999999Z'));
+        assertSameValue(false, $range->contains($midnight->modify('-1 second')->format(DATE_ATOM)));
+        assertSameValue(false, $range->contains($nextDay . 'T00:00:00Z'));
+        assertSameValue(
+            'created_at:<' . $nextDay . 'T00:00:00Z updated_at:>=' . $day . 'T00:00:00Z status:any',
+            $range->candidateSearchQuery(),
+        );
+        assertSameValue($day, $range->fromInputValue());
+        assertSameValue($day, $range->toInputValue());
+    }
+
+    $range = DateRange::fromInput('2026-11-03', '2026-11-03');
+    assertSameValue(true, $range->contains('2026-11-04T00:12:50+01:00'));
+    assertSameValue('2026-11-03', $range->formatDateInTimezone('2026-11-04T00:12:50+01:00'));
+    assertSameValue('23:12', $range->formatTimeInTimezone('2026-11-04T00:12:50+01:00'));
+    assertSameValue('2026-07-03', $range->formatDateInTimezone('2026-07-04T00:12:50+02:00'));
+    assertSameValue('22:12', $range->formatTimeInTimezone('2026-07-04T00:12:50+02:00'));
+});
+
 $runner->test('rejects unknown store keys', static function (): void {
     assertThrows(
         static fn (): StoreConfig => StoreRegistry::get('unknown'),
@@ -297,13 +323,64 @@ $runner->test('paginates Shopify orders and emits qualifying rows', static funct
     assertSameValue(2, count($calls));
     assertSameValue(null, $calls[0]['after']);
     assertSameValue('page-2', $calls[1]['after']);
-    assertContainsText('created_at:<=2026-01-31T22:59:59Z', $calls[0]['query']);
-    assertContainsText('updated_at:>=2025-12-31T23:00:00Z', $calls[0]['query']);
+    assertContainsText('created_at:<2026-02-01T00:00:00Z', $calls[0]['query']);
+    assertContainsText('updated_at:>=2026-01-01T00:00:00Z', $calls[0]['query']);
     assertContainsText('status:any', $calls[0]['query']);
     assertContainsText('sortKey: UPDATED_AT', PaymentReportOrders::query());
     assertSameValue(2, count($rows));
     assertSameValue('card', $rows[0]->paymentMethod);
     assertSameValue('paypal', $rows[1]->paymentMethod);
+});
+
+$runner->test('exports late Shopify payments on their UTC day without duplicating adjacent days', static function (): void {
+    $data = singlePageFixture();
+    $template = $data['data']['orders']['nodes'][0];
+    $data['data']['orders']['nodes'] = [];
+
+    foreach ([
+        ['previous-day', '2026-11-02T23:59:59.999999Z', '1.00'],
+        ['start-of-day', '2026-11-03T00:00:00Z', '2.00'],
+        ['P86893', '2026-11-03T23:12:50Z', '13.98'],
+        ['P86895', '2026-11-03T23:19:23Z', '9.88'],
+        ['end-of-day', '2026-11-03T23:59:59.999999Z', '3.00'],
+        ['next-day', '2026-11-04T00:00:00Z', '4.00'],
+    ] as $index => [$name, $timestamp, $amount]) {
+        $order = $template;
+        $order['id'] = 'gid://shopify/Order/' . (9000 + $index);
+        $order['name'] = $name;
+        $order['createdAt'] = $timestamp;
+        $order['transactions'][0]['id'] = 'gid://shopify/OrderTransaction/' . (9000 + $index);
+        $order['transactions'][0]['processedAt'] = $timestamp;
+        $order['transactions'][0]['amountSet']['shopMoney']['amount'] = $amount;
+        $data['data']['orders']['nodes'][] = $order;
+    }
+
+    $service = new PaymentReportService(new ShopifyAdminClient(static fn (): array => $data));
+
+    foreach (['ohyeah', 'horeca'] as $key) {
+        $store = new StoreConfig($key, 'test.myshopify.com', 'test-token', '2026-07');
+
+        foreach (['all', 'card'] as $method) {
+            $filter = PaymentMethodFilter::fromInput($method);
+            $rows = iterator_to_array($service->generate(
+                $store,
+                DateRange::fromInput('2026-11-03', '2026-11-03'),
+                $filter,
+            ), false);
+
+            assertSameValue(['start-of-day', 'P86893', 'P86895', 'end-of-day'], array_column($rows, 'orderName'));
+            $csv = CsvEncoder::encode($rows);
+            assertContainsText('2026-11-03,23:12,2026-11-03,23:12,P86893,PAID,card,"Shopify Payments",SALE,SUCCESS,13.98,EUR', $csv);
+            assertContainsText('2026-11-03,23:19,2026-11-03,23:19,P86895,PAID,card,"Shopify Payments",SALE,SUCCESS,9.88,EUR', $csv);
+
+            $nextDayRows = iterator_to_array($service->generate(
+                $store,
+                DateRange::fromInput('2026-11-04', '2026-11-04'),
+                $filter,
+            ), false);
+            assertSameValue(['next-day'], array_column($nextDayRows, 'orderName'));
+        }
+    }
 });
 
 $runner->test('filters complete CARD and PAYPAL orders and keeps linked refunds', static function (): void {
@@ -376,9 +453,9 @@ $runner->test('aggregates captures and subtracts later successful refunds', stat
     assertSameValue('SUCCESS', $rows[0]->transactionStatus);
     assertSameValue('PAID', $rows[0]->paymentStatus);
     assertSameValue('2025-09-01', $rows[0]->orderDate);
-    assertSameValue('23:30', $rows[0]->orderTime);
+    assertSameValue('21:30', $rows[0]->orderTime);
     assertSameValue('2026-01-10', $rows[0]->transactionDate);
-    assertSameValue('10:00', $rows[0]->transactionTime);
+    assertSameValue('09:00', $rows[0]->transactionTime);
 });
 
 $runner->test('excludes fully refunded orders and combines distinct transaction values', static function (): void {
@@ -416,6 +493,89 @@ $runner->test('excludes cancelled, POS, test, failed, pending and unsupported pa
     assertSameValue(false, in_array('#3002', $names, true));
     assertSameValue(false, in_array('#3003', $names, true));
     assertSameValue(false, in_array('#3004', $names, true));
+});
+
+$runner->test('exports paid orders originating from drafts in both stores', static function (): void {
+    foreach ([
+        ['ohyeah', 'P86819', '2026-11-03T14:44:21Z', '3.49'],
+        ['horeca', 'H19019', '2026-09-23T12:26:17Z', '393.13'],
+        ['horeca', 'H18976', '2026-09-22T06:31:07Z', '24.99'],
+        ['horeca', 'H18977', '2026-09-22T07:15:41Z', '175.27'],
+        ['horeca', 'H18978', '2026-09-22T07:44:14Z', '184.81'],
+    ] as [$key, $name, $timestamp, $amount]) {
+        $data = singlePageFixture();
+        $order = &$data['data']['orders']['nodes'][0];
+        $order['sourceName'] = 'shopify_draft_order';
+        $order['name'] = $name;
+        $order['createdAt'] = $timestamp;
+        $order['transactions'][0]['processedAt'] = $timestamp;
+        $order['transactions'][0]['amountSet']['shopMoney']['amount'] = $amount;
+        unset($order);
+        $day = substr($timestamp, 0, 10);
+        $service = new PaymentReportService(new ShopifyAdminClient(static fn (): array => $data));
+        $store = new StoreConfig($key, 'test.myshopify.com', 'test-token', '2026-07');
+
+        foreach (['all', 'card'] as $method) {
+            $rows = iterator_to_array($service->generate(
+                $store,
+                DateRange::fromInput($day, $day),
+                PaymentMethodFilter::fromInput($method),
+            ), false);
+            assertSameValue(1, count($rows));
+            assertSameValue($name, $rows[0]->orderName);
+            assertSameValue($amount, $rows[0]->amount);
+            assertSameValue($day, $rows[0]->transactionDate);
+            assertSameValue(substr($timestamp, 11, 5), $rows[0]->transactionTime);
+            assertContainsText(',' . $name . ',PAID,card,"Shopify Payments",SALE,SUCCESS,' . $amount . ',EUR', CsvEncoder::encode($rows));
+        }
+    }
+});
+
+$runner->test('preserves accounting and payment filters for draft-origin orders', static function (): void {
+    $data = fixture('orders-accounting');
+    $data['data']['orders']['nodes'][] = fixture('orders-page-2')['data']['orders']['nodes'][0];
+
+    foreach ($data['data']['orders']['nodes'] as &$order) {
+        if ($order['sourceName'] === 'web') {
+            $order['sourceName'] = 'shopify_draft_order';
+        }
+    }
+    unset($order);
+
+    $service = new PaymentReportService(new ShopifyAdminClient(static fn (): array => $data));
+
+    foreach (['ohyeah', 'horeca'] as $key) {
+        $store = new StoreConfig($key, 'test.myshopify.com', 'test-token', '2026-07');
+
+        foreach ([
+            'all' => [['#2001', '#2003', '#1002'], ['75.00', '15.00', '25.00']],
+            'card' => [['#2001', '#2003'], ['75.00', '15.00']],
+            'paypal' => [['#1002'], ['25.00']],
+        ] as $method => [$names, $amounts]) {
+            $rows = iterator_to_array($service->generate(
+                $store,
+                DateRange::fromInput('2026-01-01', '2026-01-31'),
+                PaymentMethodFilter::fromInput($method),
+            ), false);
+            assertSameValue($names, array_column($rows, 'orderName'));
+            assertSameValue($amounts, array_column($rows, 'amount'));
+            assertSameValue(array_fill(0, count($rows), 'PAID'), array_column($rows, 'paymentStatus'));
+        }
+    }
+});
+
+$runner->test('keeps unsupported order origins excluded', static function (): void {
+    $order = singlePageFixture()['data']['orders']['nodes'][0];
+    $factory = new PaymentCsv\PaymentReportRowFactory();
+
+    foreach (['pos', 'mobile_app', 'manual', '', null] as $source) {
+        $order['sourceName'] = $source;
+        assertSameValue(null, $factory->fromOrder(
+            $order,
+            DateRange::fromInput('2026-01-01', '2026-01-31'),
+            PaymentMethodFilter::fromInput('all'),
+        ));
+    }
 });
 
 $runner->test('reports historical order permission failures safely', static function (): void {

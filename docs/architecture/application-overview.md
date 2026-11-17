@@ -59,7 +59,7 @@ pagos-shopify-{shop}-{from}-{to}.csv
 Fecha del pedido,Hora del pedido,Fecha de la transacción,Hora de la transacción,Referencia del pedido,Estado del pago,Método de pago,Pasarela de pago,Tipo de transacción,Estado de la transacción,Importe de la transacción,Moneda
 ```
 
-El separador es una coma, los decimales usan punto y los importes se expresan en EUR con dos decimales. Los timestamps se convierten a `Europe/Madrid` y se dividen en una columna de fecha `YYYY-MM-DD` y otra de hora `HH:mm`; el desplazamiento horario no se imprime.
+El separador es una coma, los decimales usan punto y los importes se expresan en EUR con dos decimales. Los timestamps se expresan en `UTC`, como los cobros en las liquidaciones de Shopify Payments, y se dividen en una columna de fecha `YYYY-MM-DD` y otra de hora `HH:mm`; el desplazamiento horario no se imprime. El intervalo solicitado también se interpreta en UTC.
 Los registros terminan en CRLF, los campos siguen el escape CSV estándar y las celdas de texto que podrían interpretarse como fórmulas se neutralizan con un apóstrofo inicial.
 
 ### Alcance implementado
@@ -77,9 +77,9 @@ Las Fases 1, 2 y 3 permiten:
 - Restar los reembolsos correctos vinculados, incluso si son posteriores al intervalo.
 - Excluir los pedidos cuyo estado financiero actual sea `REFUNDED`.
 - Normalizar los pedidos `PARTIALLY_REFUNDED` como `PAID` manteniendo el importe neto después del reembolso.
-- Excluir pedidos cancelados y pedidos cuyo canal no sea Online Store.
+- Admitir pedidos de Online Store (`web`) y pedidos procedentes de borradores (`shopify_draft_order`), excluyendo cancelados y otros orígenes.
 - Combinar de forma determinista métodos, pasarelas y tipos distintos.
-- Convertir las fechas a `Europe/Madrid` y ordenar el resultado de forma estable.
+- Expresar las fechas en `UTC`, alinear la selección con el día del cobro en Shopify Payments y ordenar el resultado de forma estable.
 - Separar fecha y hora del pedido y de la transacción, usando hora de 24 horas sin sufijo de zona horaria.
 - Mostrar un error seguro y accionable cuando faltan permisos para pedidos históricos.
 - Rechazar métodos, tipos de contenido, tamaños y campos de petición no admitidos con códigos HTTP específicos.

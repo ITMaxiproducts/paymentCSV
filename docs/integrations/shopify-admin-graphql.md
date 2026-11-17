@@ -48,10 +48,10 @@ Campos relevantes:
 La búsqueda de candidatos usa un superset seguro que incluye cualquier estado de pedido:
 
 ```text
-created_at:<=final_del_intervalo updated_at:>=inicio_del_intervalo status:any
+created_at:<medianoche_UTC_siguiente_al_ultimo_dia updated_at:>=inicio_UTC_del_intervalo status:any
 ```
 
-Después, PHP aplica el intervalo exacto a `OrderTransaction.processedAt` en la zona `Europe/Madrid`.
+Después, PHP aplica el intervalo exacto a `OrderTransaction.processedAt` en `UTC`, para conservar el día del cobro que se muestra en las liquidaciones de Shopify Payments. El límite superior de búsqueda es exclusivo y permite recuperar también pedidos creados durante el último segundo, con fracciones de segundo. Las fechas y horas del CSV se expresan en la misma zona.
 
 El selector `all|card|paypal` también se aplica en PHP sobre el método ya normalizado. No cambia la operación GraphQL, sus variables, la paginación ni los permisos requeridos.
 
@@ -64,7 +64,7 @@ Una transacción de pago es válida cuando:
 - El método se normaliza como `card` o `paypal`.
 - `amountSet.shopMoney.currencyCode` es `EUR`.
 
-PHP aplica las [reglas contables del informe de pagos](../domain/payment-report-accounting.md): excluye pedidos no admitidos, agrega los cobros por céntimos y resta los reembolsos vinculados aunque sean posteriores al intervalo.
+PHP aplica las [reglas contables del informe de pagos](../domain/payment-report-accounting.md): admite los orígenes `web` y `shopify_draft_order`, excluye pedidos no admitidos, agrega los cobros por céntimos y resta los reembolsos vinculados aunque sean posteriores al intervalo. Los pedidos procedentes de borradores se recuperan mediante la misma consulta `orders`; no se consulta `draftOrders` ni se requieren permisos adicionales.
 
 ### Errores
 

@@ -1,6 +1,6 @@
 # Shopify Payment CSV
 
-Aplicación PHP sin dependencias de runtime que descarga un CSV de pagos de Shopify para las tiendas OHYEAH y HORECA. El informe usa una fila por pedido, filtra por la fecha de la transacción en `Europe/Madrid` y aplica las reglas de cobros y reembolsos documentadas en [`docs/domain/payment-report-accounting.md`](docs/domain/payment-report-accounting.md).
+Aplicación PHP sin dependencias de runtime que descarga un CSV de pagos de Shopify para las tiendas OHYEAH y HORECA. Admite pedidos de Online Store (`web`) y pedidos procedentes de borradores (`shopify_draft_order`). El informe usa una fila por pedido, filtra por la fecha de la transacción en `UTC`, como los cobros en las liquidaciones de Shopify Payments, y aplica las reglas de cobros y reembolsos documentadas en [`docs/domain/payment-report-accounting.md`](docs/domain/payment-report-accounting.md).
 
 Versión estable actual: `v1.1.0`. Consulta las [notas de versión](CHANGELOG.md).
 
@@ -53,7 +53,7 @@ El formulario envía `payment_method` con uno de los valores `all`, `card` o `pa
 
 Cuando no existen pedidos coincidentes se descarga un CSV válido que contiene solo las doce cabeceras y la interfaz lo indica expresamente. Durante limitaciones temporales o fallos 408/429/5xx, el cliente de Shopify realiza hasta tres intentos con esperas acotadas.
 
-Las fechas y horas ocupan columnas separadas: `YYYY-MM-DD` para la fecha y `HH:mm` en formato de 24 horas para la hora. Ambos valores se convierten previamente a `Europe/Madrid`, sin incluir el desplazamiento `+01:00` o `+02:00` en el CSV.
+Las fechas y horas ocupan columnas separadas: `YYYY-MM-DD` para la fecha y `HH:mm` en formato de 24 horas para la hora. Ambos valores se expresan en `UTC`, sin incluir el desplazamiento en el CSV. El filtro de fechas usa también días completos en UTC, para que un cobro del día 3 en las liquidaciones de Shopify Payments aparezca en el informe del día 3 aunque en Madrid ya sea día 4. Esta convención es común a OHYEAH, HORECA, tarjeta y PayPal.
 
 Los pedidos `PARTIALLY_REFUNDED` se incluyen con el reembolso descontado y se normalizan como `PAID`, porque conservan un cobro neto positivo. Los pedidos con estado financiero `REFUNDED` se excluyen del informe.
 
